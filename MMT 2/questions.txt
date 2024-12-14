@@ -1,0 +1,80 @@
+Math
+1
+37 * 3 = ?
+111
+123
+117
+129
+A
+Math
+2
+12345679 * 9 = ?
+97654321
+123456789
+111111111
+102345679
+C
+Math
+1
+1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 = ?
+55
+45
+100
+10
+B
+Math
+1
+6 / 3 * 2 = ?
+1
+9
+6
+4
+D
+Math
+2
+Điền số thích hợp vào dãy: 1, 1, 2, 3, 5, 8, 13, ...
+14
+15
+17
+21
+D
+Geography
+1
+Đâu là thủ đô của Pháp?
+Rome
+Berlin
+Paris
+London
+C
+Geography
+2
+Đất nước nào ở châu Phi?
+Ấn Độ
+Ai Cập
+Venezuela
+Moldova
+B
+History
+2
+Chiến tranh thế giới thứ 2 kết thúc vào năm nào?
+1945
+1939
+1914
+1918
+A
+History
+3
+Hiệp định nào chấm dứt chế độ thực dân Pháp tại Đông Dương?
+Paris
+Geneva
+Tilsit
+Versailles
+B
+Literature
+2
+Ai là tác giả của Tắt đèn?
+Nam Cao
+Ngô Tất Tố
+Tô Hoài
+Nguyễn Tuân
+B
