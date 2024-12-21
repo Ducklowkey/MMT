@@ -1,4 +1,4 @@
-Math
+ Math
 1
 37 * 3 = ?
 111
@@ -6,7 +6,7 @@ Math
 117
 129
 A
-Math
+ Math
 2
 12345679 * 9 = ?
 97654321
@@ -14,7 +14,7 @@ Math
 111111111
 102345679
 C
-Math
+ Math
 1
 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 = ?
 55
@@ -22,7 +22,7 @@ Math
 100
 10
 B
-Math
+ Math
 1
 6 / 3 * 2 = ?
 1
@@ -30,7 +30,7 @@ Math
 6
 4
 D
-Math
+ Math
 2
 Điền số thích hợp vào dãy: 1, 1, 2, 3, 5, 8, 13, ...
 14
@@ -38,7 +38,7 @@ Math
 17
 21
 D
-Geography
+ Geography
 1
 Đâu là thủ đô của Pháp?
 Rome
@@ -46,7 +46,7 @@ Berlin
 Paris
 London
 C
-Geography
+ Geography
 2
 Đất nước nào ở châu Phi?
 Ấn Độ
@@ -54,7 +54,7 @@ Ai Cập
 Venezuela
 Moldova
 B
-History
+ History
 2
 Chiến tranh thế giới thứ 2 kết thúc vào năm nào?
 1945
@@ -62,7 +62,7 @@ Chiến tranh thế giới thứ 2 kết thúc vào năm nào?
 1914
 1918
 A
-History
+ History
 3
 Hiệp định nào chấm dứt chế độ thực dân Pháp tại Đông Dương?
 Paris
@@ -70,7 +70,7 @@ Geneva
 Tilsit
 Versailles
 B
-Literature
+ Literature
 2
 Ai là tác giả của Tắt đèn?
 Nam Cao
@@ -78,3 +78,19 @@ Ngô Tất Tố
 Tô Hoài
 Nguyễn Tuân
 B
+ Math 
+3
+Có bao nhiêu cách sắp xếp 6 người thành 1 hàng ngang 
+36 
+720 
+1 
+6
+B
+ Math 
+3
+Trong không gian Oxyz , mặt phẳng đi qua điểm M(3;4;-2) và vuông góc với trục Oz có phương trình là 
+x-3=0
+y-4=0
+x+y+z-5=0
+z+2=0
+D

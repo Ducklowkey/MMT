@@ -164,42 +164,6 @@ void start_exam(Server* server, ExamRoom* room) {
     }
 }
 
-void calculate_score(ClientInfo* client) {
-    ExamRoom* room = get_room(client->current_room_id);
-    if (!room) {
-        return;
-    }
-    
-    // Điểm đã được tính trong handle_answer khi kiểm tra từng câu
-    // Có thể thêm xử lý điểm phức tạp hơn ở đây nếu cần
-    printf("Final score calculated for client %d: %d/%d\n", 
-           client->fd, client->score, room->num_questions);
-}
-
-void save_exam_result(ClientInfo* client, ExamRoom* room) {
-    if (!client || !room) {
-        return;
-    }
-    
-    // Tạo file results.txt nếu chưa tồn tại
-    FILE* file = fopen("results.txt", "a");
-    if (!file) {
-        perror("Cannot open results file");
-        return;
-    }
-
-    // Ghi kết quả theo định dạng: username,roomid,score,total,timestamp
-    fprintf(file, "%s,%d,%d,%d,%ld\n",
-            client->username,
-            room->room_id,
-            client->score,
-            room->num_questions,
-            time(NULL));
-
-    fclose(file);
-    printf("Exam result saved for user %s\n", client->username);
-}
-
 void handle_answer(ClientInfo* client, char answer) {
     ExamRoom* room = get_room(client->current_room_id);
     if (!room) {

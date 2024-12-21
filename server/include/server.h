@@ -4,7 +4,7 @@
 #include "../../common/include/constants.h"
 #include "../../common/include/protocol.h"
 #include "../../common/include/types.h"
-#include "room.h"  // Thêm include này
+#include "room.h"
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>

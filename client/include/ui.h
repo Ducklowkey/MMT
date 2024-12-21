@@ -9,10 +9,13 @@
 void print_banner(void);
 void print_main_menu(void);
 void print_room_menu(int is_creator);
-void handle_main_menu(Client* client);
-void handle_room_menu(Client* client);
 void clear_screen(void);
 void print_error(const char* message);
 void print_success(const char* message);
+void handle_main_menu(Client* client);
+void handle_room_menu(Client* client);
+
+void handle_add_question(Client* client);
+void print_add_question_menu(void);
 
 #endif // UI_H

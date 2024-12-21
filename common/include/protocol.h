@@ -15,6 +15,9 @@
 #define CMD_DELETE_ROOM "DELETE_ROOM"
 #define CMD_START_EXAM "START_EXAM"
 
+// Add question 
+#define CMD_ADD_QUESTION "ADD_QUESTION"
+
 // Exam commands
 #define CMD_SUBMIT_ANSWER "SUBMIT_ANSWER"
 #define CMD_SUBMIT_EARLY "SUBMIT_EARLY"

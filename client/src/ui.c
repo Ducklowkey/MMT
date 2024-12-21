@@ -15,7 +15,8 @@ void print_main_menu(void) {
     printf("\n=== Main Menu ===\n");
     printf("1. Create Exam Room\n");
     printf("2. Join Exam Room\n");
-    printf("3. Logout\n");
+    printf("3. Add New Question\n");
+    printf("4. Logout\n");
 }
 
 void print_room_menu(int is_creator) {
@@ -32,11 +33,11 @@ void print_room_menu(int is_creator) {
 }
 
 void clear_screen(void) {
-#ifdef _WIN32
-    system("cls");
-#else
-    system("clear");
-#endif
+    #ifdef _WIN32
+        system("cls");
+    #else
+        system("clear");
+    #endif
 }
 
 void print_error(const char* message) {
@@ -153,60 +154,54 @@ void handle_main_menu(Client* client) {
 
         switch (choice) {
             case 1: { // Create Exam Room
-    printf("Enter room name: ");
-    char room_name[BUFFER_SIZE];
-    char cmd[BUFFER_SIZE];
-    
-    // Đọc tên phòng
-    if (fgets(room_name, BUFFER_SIZE, stdin)) {
-        room_name[strcspn(room_name, "\n")] = 0;
-        
-        // Kiểm tra độ dài tên phòng
-        if (strlen(room_name) < 1) {
-            print_error("Room name cannot be empty");
-            continue;
-        }
+                printf("Enter room name: ");
+                char room_name[BUFFER_SIZE];
+                char cmd[BUFFER_SIZE];
+                
+                if (fgets(room_name, BUFFER_SIZE, stdin)) {
+                    room_name[strcspn(room_name, "\n")] = 0;
+                    
+                    if (strlen(room_name) < 1) {
+                        print_error("Room name cannot be empty");
+                        continue;
+                    }
 
-        // Tạo lệnh với kiểm tra độ dài
-        memset(cmd, 0, BUFFER_SIZE);
-        if (snprintf(cmd, BUFFER_SIZE, "CREATE_ROOM %s", room_name) >= BUFFER_SIZE) {
-            print_error("Room name too long");
-            continue;
-        }
+                    memset(cmd, 0, BUFFER_SIZE);
+                    if (snprintf(cmd, BUFFER_SIZE, "CREATE_ROOM %s", room_name) >= BUFFER_SIZE) {
+                        print_error("Room name too long");
+                        continue;
+                    }
 
-        printf("Sending command: %s\n", cmd);
+                    printf("Sending message: %s\n", cmd);
 
-        // Gửi lệnh tạo phòng
-        if (send_message(client, cmd) < 0) {
-            print_error("Failed to send command to server");
-            continue;
-        }
+                    if (send_message(client, cmd) < 0) {
+                        print_error("Failed to send command to server");
+                        continue;
+                    }
 
-        // Nhận phản hồi
-        char response[BUFFER_SIZE];
-        memset(response, 0, BUFFER_SIZE);
-        int received = receive_message(client, response);
-        
-        if (received < 0) {
-            print_error("Failed to receive server response");
-            continue;
-        }
+                    char response[BUFFER_SIZE];
+                    memset(response, 0, BUFFER_SIZE);
+                    int received = receive_message(client, response);
+                    if (received < 0) {
+                        print_error("Failed to receive server response");
+                        continue;
+                    }
 
-        printf("Server response: %s", response);
-
-        // Xử lý phản hồi
-        if (strstr(response, "success") != NULL) {
-            client->is_room_creator = 1;
-            print_success("Room created successfully!");
-            handle_room_menu(client);
-        } else {
-            print_error(response);
-        }
-    } else {
-        print_error("Failed to read room name");
-    }
-    break;
-}
+                    // Kiểm tra response bằng prefix rõ ràng
+                    if (strncmp(response, "ROOM_CREATED", 11) == 0) {
+                        int room_id;
+                        if (sscanf(response + 12, "%d", &room_id) == 1) {
+                            client->current_room = room_id;
+                            client->is_room_creator = 1;
+                            print_success("Room created successfully");
+                            handle_room_menu(client);
+                        }
+                    } else {
+                        print_error(response);
+                    }
+                }
+                break;
+            }
 
             case 2: { // Join Exam Room
                 if (send_message(client, "LIST_ROOMS") >= 0) {
@@ -215,17 +210,22 @@ void handle_main_menu(Client* client) {
 
                         printf("Enter room ID to join (0 to cancel): ");
                         int room_id;
-                        if (scanf("%d", &room_id) == 1 && room_id > 0) {
+                        if (scanf("%d", &room_id) == 1) {
                             while (getchar() != '\n');
+                            
+                            if (room_id == 0) {
+                                continue;
+                            }
 
                             char cmd[BUFFER_SIZE];
                             snprintf(cmd, BUFFER_SIZE, "JOIN_ROOM %d", room_id);
 
                             if (send_message(client, cmd) >= 0) {
                                 if (receive_message(client, buffer) >= 0) {
-                                    if (strstr(buffer, "success") != NULL) {
-                                        print_success("Joined room successfully");
+                                    if (strstr(buffer, "successfully") != NULL) {
+                                        client->current_room = room_id;
                                         client->is_room_creator = 0;
+                                        print_success("Joined room successfully");
                                         handle_room_menu(client);
                                     } else {
                                         print_error(buffer);
@@ -238,10 +238,17 @@ void handle_main_menu(Client* client) {
                 break;
             }
 
-            case 3: // Logout
-                send_message(client, "LOGOUT");
-                print_success("Logging out...");
-                return;
+            case 3: // Add question
+                handle_add_question(client);
+                break;
+
+            case 4: // Logout
+                if (send_message(client, "LOGOUT") >= 0) {
+                    receive_message(client, buffer); // Đợi phản hồi từ server
+                    print_success("Logged out successfully");
+                    return;
+                }
+                break;
 
             default:
                 print_error("Invalid option");
@@ -249,3 +256,80 @@ void handle_main_menu(Client* client) {
         }
     }
 }
+
+void handle_add_question(Client* client) {
+    char subject[50];
+    int difficulty;
+    char question[200];
+    char option_a[100];
+    char option_b[100];
+    char option_c[100];
+    char option_d[100];
+    char correct_answer;
+    char buffer[BUFFER_SIZE];
+    char command[BUFFER_SIZE];
+
+    clear_screen();
+    print_add_question_menu();
+
+    // Nhập thông tin câu hỏi như cũ...
+    printf("Subject (e.g., Math, Geography, History, Literature): ");
+    fgets(subject, sizeof(subject), stdin);
+    subject[strcspn(subject, "\n")] = 0;
+
+    do {
+        printf("Difficulty (1-3): ");
+        fgets(buffer, sizeof(buffer), stdin);
+    } while (sscanf(buffer, "%d", &difficulty) != 1 || difficulty < 1 || difficulty > 3);
+
+    printf("Question: ");
+    fgets(question, sizeof(question), stdin);
+    question[strcspn(question, "\n")] = 0;
+
+    printf("Option A: ");
+    fgets(option_a, sizeof(option_a), stdin);
+    option_a[strcspn(option_a, "\n")] = 0;
+
+    printf("Option B: ");
+    fgets(option_b, sizeof(option_b), stdin);
+    option_b[strcspn(option_b, "\n")] = 0;
+
+    printf("Option C: ");
+    fgets(option_c, sizeof(option_c), stdin);
+    option_c[strcspn(option_c, "\n")] = 0;
+
+    printf("Option D: ");
+    fgets(option_d, sizeof(option_d), stdin);
+    option_d[strcspn(option_d, "\n")] = 0;
+
+    do {
+        printf("Correct answer (A/B/C/D): ");
+        fgets(buffer, sizeof(buffer), stdin);
+        correct_answer = toupper(buffer[0]);
+    } while (correct_answer != 'A' && correct_answer != 'B' && 
+             correct_answer != 'C' && correct_answer != 'D');
+
+    // Tạo command để gửi đến server
+    snprintf(command, BUFFER_SIZE, "ADD_QUESTION %s|%d|%s|%s|%s|%s|%s|%c",
+             subject, difficulty, question, option_a, option_b, option_c, option_d, correct_answer);
+
+    // Gửi đến server
+    if (send_message(client, command) > 0) {
+        // Nhận phản hồi từ server
+        if (receive_message(client, buffer) > 0) {
+            if (strstr(buffer, "success") != NULL) {
+                print_success("Question added successfully!");
+            } else {
+                print_error(buffer);
+            }
+        }
+    } else {
+        print_error("Failed to send command to server");
+    }
+}
+
+void print_add_question_menu(void) {
+    printf("\n=== Add New Question ===\n");
+    printf("Please enter the following information:\n");
+}
+

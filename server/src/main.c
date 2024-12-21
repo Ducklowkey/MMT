@@ -1,4 +1,3 @@
-// server/src/main.c
 #include "../include/server.h"
 #include "../include/exam.h"
 #include "../include/database.h"
@@ -34,9 +33,6 @@ int main() {
         return EXIT_FAILURE;
     }
 
-    // Initialize database
-    init_database();
-
     // Load exam questions
     load_questions();
 
@@ -48,7 +44,6 @@ int main() {
     // Cleanup
     printf("Shutting down server...\n");
     destroy_server(server);
-    close_database();
 
     printf("Server shutdown complete\n");
     return EXIT_SUCCESS;

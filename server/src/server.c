@@ -1,4 +1,3 @@
-// server/src/server.c
 #include "../include/server.h"
 #include "../include/room.h"
 #include "../include/declarations.h"
@@ -275,20 +274,19 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
        return;
    }
 
-   // Xử lý các lệnh khác như cũ
    if (strncmp(buffer, "CREATE_ROOM", 11) == 0) {
-       char* room_name = buffer + 12;
-       if (strlen(room_name) > 0) {
-           int room_id = create_exam_room(room_name, client->username);
-           if (room_id > 0) {
-               client->current_room_id = room_id;
-               snprintf(response, BUFFER_SIZE, "Room created successfully\n");
-           } else {
-               snprintf(response, BUFFER_SIZE, "Failed to create room\n");
-           }
-           send(client->fd, response, strlen(response), 0);
-       }
-   }
+    char* room_name = buffer + 12;
+    if (strlen(room_name) > 0) {
+        int room_id = create_exam_room(room_name, client->username);
+        if (room_id > 0) {
+            client->current_room_id = room_id;
+            snprintf(response, BUFFER_SIZE, "ROOM_CREATED %d\n", room_id);
+        } else {
+            snprintf(response, BUFFER_SIZE, "CREATE_FAILED\n");
+        }
+        send(client->fd, response, strlen(response), 0);
+    }
+}
    else if (strcmp(buffer, "LIST_ROOMS") == 0) {
        get_room_list(response);
        send(client->fd, response, strlen(response), 0);
@@ -313,21 +311,82 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
        send(client->fd, response, strlen(response), 0);
    }
    else if (strcmp(buffer, "DELETE_ROOM") == 0) {
-       if (client->current_room_id != -1) {
-           if (is_room_creator(client->current_room_id, client->username)) {
-               delete_exam_room(client->current_room_id, server->clients);
-               snprintf(response, BUFFER_SIZE, "Room deleted successfully\n");
-           } else {
-               snprintf(response, BUFFER_SIZE, "Only room creator can delete room\n");
-           }
-       } else {
-           snprintf(response, BUFFER_SIZE, "You are not in any room\n");
-       }
-       send(client->fd, response, strlen(response), 0);
-   }
+    if (client->current_room_id != -1) {
+        if (is_room_creator(client->current_room_id, client->username)) {
+            // Lưu lại id phòng cần xóa
+            int room_to_delete = client->current_room_id;
+            
+            // Thông báo cho tất cả user trong phòng (trừ người xóa)
+            for (int i = 0; i < MAX_CLIENTS; i++) {
+                ClientInfo* other_client = &server->clients[i];
+                if (other_client->active && 
+                    other_client->current_room_id == room_to_delete &&
+                    other_client->fd != client->fd) {
+                    char msg[] = "Room has been deleted by creator\n";
+                    send(other_client->fd, msg, strlen(msg), 0);
+                    other_client->current_room_id = -1;
+                }
+            }
+            
+            // Xóa phòng
+            delete_exam_room(room_to_delete, server->clients);
+            
+            // Trả response riêng cho người xóa
+            snprintf(response, BUFFER_SIZE, "ROOM_DELETED\n");
+            client->current_room_id = -1;
+        } else {
+            snprintf(response, BUFFER_SIZE, "Only room creator can delete room\n");
+        }
+    } else {
+        snprintf(response, BUFFER_SIZE, "You are not in any room\n");
+    }
+    send(client->fd, response, strlen(response), 0);
+}
    else if (strcmp(buffer, "LOGOUT") == 0) {
-       handle_logout(client);
+       if (client->current_room_id != -1) {
+           leave_exam_room(client->current_room_id, client->username, client);
+       }
+       
+       // Reset client state
+       memset(client->username, 0, MAX_USERNAME);
+       memset(client->session_id, 0, sizeof(client->session_id));
+       client->authenticated = 0;
+       client->session_start = 0;
+       client->current_room_id = -1;
+       client->current_question = -1;
+       client->score = 0;
+
+       // Gửi thông báo thành công cho client
        snprintf(response, BUFFER_SIZE, "Logged out successfully\n");
        send(client->fd, response, strlen(response), 0);
+       
+       printf("User logged out: fd=%d\n", client->fd);
    }
+   else if (strncmp(buffer, "ADD_QUESTION", 11) == 0) {
+    char *data = buffer + 12; // Skip "ADD_QUESTION "
+    char subject[50], question[200], opt_a[100], opt_b[100], opt_c[100], opt_d[100];
+    int difficulty;
+    char correct_answer;
+
+    // Parse dữ liệu
+    if (sscanf(data, "%[^|]|%d|%[^|]|%[^|]|%[^|]|%[^|]|%[^|]|%c",
+               subject, &difficulty, question, opt_a, opt_b, opt_c, opt_d, &correct_answer) == 8) {
+        
+        // Ghi vào file
+        FILE* file = fopen("questions.txt", "a");
+        if (file) {
+            fprintf(file, "%s\n%d\n%s\n%s\n%s\n%s\n%s\n%c\n",
+                    subject, difficulty, question, opt_a, opt_b, opt_c, opt_d, correct_answer);
+            fclose(file);
+            
+            snprintf(response, BUFFER_SIZE, "Question added successfully\n");
+        } else {
+            snprintf(response, BUFFER_SIZE, "Failed to add question\n");
+        }
+    } else {
+        snprintf(response, BUFFER_SIZE, "Invalid question format\n");
+    }
+    
+    send(client->fd, response, strlen(response), 0);
+}
 }

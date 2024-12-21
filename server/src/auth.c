@@ -1,4 +1,3 @@
-// server/src/auth.c
 #include "../include/auth.h"
 #include <stdio.h>
 #include <stdlib.h>

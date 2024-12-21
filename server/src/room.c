@@ -1,4 +1,5 @@
 #include "../include/room.h"
+#include "../include/server.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,7 +20,7 @@ int create_exam_room(const char* room_name, const char* creator) {
     room->is_active = 1;
     room->user_count = 1;
     strncpy(room->users[0], creator, MAX_USERNAME - 1);
-    room->status = 0;  // PENDING
+    room->status = 0;
     room->start_time = 0;
     room->difficulty = 1;
     memset(room->question_ids, 0, sizeof(room->question_ids));

@@ -1,4 +1,3 @@
-// server/include/declarations.h
 #ifndef DECLARATIONS_H
 #define DECLARATIONS_H
 
