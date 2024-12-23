@@ -18,6 +18,10 @@
 // Add question 
 #define CMD_ADD_QUESTION "ADD_QUESTION"
 
+// Training Mode 
+#define CMD_START_TRAINING "START_TRAINING"
+#define CMD_QUIT_TRAINING "QUIT_TRAINING"
+
 // Exam commands
 #define CMD_SUBMIT_ANSWER "SUBMIT_ANSWER"
 #define CMD_SUBMIT_EARLY "SUBMIT_EARLY"

@@ -14,8 +14,10 @@ void print_error(const char* message);
 void print_success(const char* message);
 void handle_main_menu(Client* client);
 void handle_room_menu(Client* client);
-
 void handle_add_question(Client* client);
 void print_add_question_menu(void);
+void print_training_menu(void);
+void handle_training_menu(Client* client);
+void handle_training_setup(Client* client);
 
 #endif // UI_H

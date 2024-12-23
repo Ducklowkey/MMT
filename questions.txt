@@ -94,3 +94,627 @@ y-4=0
 x+y+z-5=0
 z+2=0
 D
+Math
+1
+5 + 7 = ?
+10
+12
+13
+14
+B
+Math
+1
+15 - 8 = ?
+7
+6
+8
+9
+A
+Math
+1
+4 * 6 = ?
+20
+24
+28
+30
+B
+Math
+1
+20 / 5 = ?
+3
+4
+5
+6
+B
+Math
+2
+2^3 + 5 = ?
+13
+10
+12
+15
+A
+Math
+2
+(10 + 5) * 2 = ?
+20
+25
+30
+35
+C
+Math
+2
+100 / 4 + 6 = ?
+28
+30
+31
+32
+C
+Math
+2
+Căn bậc hai của 81 là bao nhiêu?
+7
+8
+9
+10
+C
+Math
+3
+Diện tích hình chữ nhật có chiều dài 12 và chiều rộng 5 là bao nhiêu?
+60
+30
+17
+24
+A
+Math
+3
+Giải phương trình: 2x + 7 = 15
+4
+6
+8
+10
+A
+Math
+3
+10% của 200 là bao nhiêu?
+10
+20
+30
+40
+B
+Math
+3
+Số nguyên tố tiếp theo sau 11 là số nào?
+12
+13
+14
+15
+B
+Math
+1
+11 cộng 12 bằng bao nhiêu?
+22
+21
+23
+20
+C
+Math
+1
+25 trừ 13 bằng bao nhiêu?
+10
+12
+13
+11
+B
+Math
+2
+Nếu một tam giác có hai cạnh là 5 và 7 và góc xen giữa là 60 độ, thì độ dài cạnh thứ ba là bao nhiêu?
+6.24
+5.24
+7.24
+8.24
+A
+Math
+2
+Nếu một hình tròn có bán kính là 5, thì diện tích của nó là bao nhiêu?
+17.45
+78.5
+100
+30
+B
+Math
+3
+Đạo hàm của x^2 + 2x + 1 là gì?
+x+1
+2x+2
+2x+1
+3x+2
+B
+Math
+3
+Tích phân của 2x+1 là gì?
+x^2+x+c
+x^2+2x+c
+x+2+c
+x^2+1+c
+A
+Science
+1
+Kí hiệu hóa học của nước là gì?
+H2O
+CO2
+O2
+NaCl
+A
+Science
+1
+Tên của lực hút các vật về phía Trái Đất là gì?
+Trọng lực
+Từ tính
+Ma sát
+Sức căng
+A
+Science
+1
+Hành tinh lớn nhất trong hệ Mặt Trời của chúng ta là gì?
+Trái Đất
+Sao Hỏa
+Sao Mộc
+Sao Thổ
+C
+Science
+2
+Quá trình mà thực vật tự tạo ra thức ăn được gọi là gì?
+Hô hấp
+Quang hợp
+Lên men
+Tiêu hóa
+B
+Science
+2
+Đơn vị cơ bản của di truyền là gì?
+Tế bào
+Mô
+Gen
+Cơ quan
+C
+Science
+2
+Ba trạng thái của vật chất là gì?
+Rắn, lỏng, plasma
+Rắn, khí, năng lượng
+Rắn, lỏng, khí
+Lỏng, khí, plasma
+C
+Science
+3
+Tốc độ ánh sáng trong chân không là bao nhiêu?
+300.000 km/s
+300.000 m/s
+150.000 km/s
+150.000 m/s
+A
+Science
+3
+Chức năng của ti thể trong tế bào là gì?
+Tổng hợp protein
+Sản xuất năng lượng
+Lưu trữ DNA
+Loại bỏ chất thải
+B
+Science
+3
+Định luật bảo toàn năng lượng nói gì?
+Năng lượng có thể được tạo ra
+Năng lượng có thể bị phá hủy
+Năng lượng không thể tạo ra hoặc phá hủy, chỉ có thể chuyển đổi
+Năng lượng chỉ có thể chuyển thành nhiệt
+C
+Science
+3
+Số nguyên tử của cacbon là bao nhiêu?
+4
+5
+6
+7
+C
+Geography
+1
+Châu lục nào được mệnh danh là "Xứ sở Mặt Trời mọc"?
+Châu Phi
+Châu Á
+Châu Âu
+Nam Mỹ
+B
+Geography
+1
+Thủ đô của Úc là gì?
+Sydney
+Melbourne
+Canberra
+Brisbane
+C
+Geography
+1
+Sông dài nhất thế giới là sông nào?
+Amazon
+Nile
+Dương Tử
+Mississippi
+B
+Geography
+2
+Dãy núi nào ngăn cách châu Âu và châu Á?
+Alps
+Himalayas
+Andes
+Ural
+D
+Geography
+2
+Tên của sa mạc ở Bắc Phi là gì?
+Gobi
+Sahara
+Atacama
+Arabian
+B
+Geography
+2
+Đại dương nào nằm giữa châu Phi và châu Úc?
+Đại Tây Dương
+Thái Bình Dương
+Bắc Băng Dương
+Ấn Độ Dương
+D
+Geography
+3
+Ngọn núi cao nhất thế giới là ngọn núi nào?
+K2
+Kangchenjunga
+Everest
+Lhotse
+C
+Geography
+3
+Quốc gia nào được mệnh danh là "Đất nước của nghìn hồ"?
+Phần Lan
+Thụy Điển
+Na Uy
+Đan Mạch
+A
+Geography
+3
+Tên của hệ thống rạn san hô lớn nhất thế giới là gì?
+Rạn san hô Great Barrier
+Rạn san hô Belize Barrier
+Rạn san hô Biển Đỏ
+Rạn san hô Florida Keys
+A
+Geography
+3
+Hẻm núi Grand Canyon nằm ở đâu?
+Arizona
+Utah
+Nevada
+California
+A
+History
+1
+Ai là Tổng thống đầu tiên của Hoa Kỳ?
+George Washington
+Thomas Jefferson
+John Adams
+Abraham Lincoln
+A
+History
+1
+Chiến tranh thế giới thứ nhất bắt đầu năm nào?
+1914
+1918
+1939
+1945
+A
+History
+1
+Ai là người vẽ bức tranh Mona Lisa?
+Van Gogh
+Picasso
+Leonardo da Vinci
+Michelangelo
+C
+History
+2
+Tên con tàu chở những người hành hương đến Mỹ là gì?
+Santa Maria
+Mayflower
+Victory
+Endeavor
+B
+History
+2
+Nền văn minh cổ đại nào đã xây dựng các kim tự tháp ở Giza?
+La Mã
+Hy Lạp
+Ai Cập
+Ba Tư
+C
+History
+2
+Chiến tranh Lạnh là gì?
+Một cuộc chiến có nhiều băng
+Một cuộc chiến giữa Mỹ và Liên Xô
+Một cuộc chiến không có vũ khí
+Một cuộc chiến giữa Pháp và Anh
+B
+History
+3
+Ai là người đầu tiên đi bộ trên Mặt Trăng?
+Neil Armstrong
+Buzz Aldrin
+Yuri Gagarin
+Alan Shepard
+A
+History
+3
+Bức tường Berlin sụp đổ năm nào?
+1987
+1989
+1991
+1993
+B
+History
+3
+Cuộc chiến nào đã xảy ra giữa miền Bắc và miền Nam Hoa Kỳ?
+Cách mạng Hoa Kỳ
+Chiến tranh thế giới thứ nhất
+Nội chiến Hoa Kỳ
+Chiến tranh Việt Nam
+C
+History
+3
+Ai là người lãnh đạo phong trào độc lập Ấn Độ?
+Mahatma Gandhi
+Jawaharlal Nehru
+Indira Gandhi
+Sardar Patel
+A
+Literature
+1
+Ai là tác giả của "Romeo và Juliet"?
+Charles Dickens
+William Shakespeare
+Jane Austen
+Ernest Hemingway
+B
+Literature
+1
+Ai là tác giả của "Giết con chim nhại"?
+Harper Lee
+Mark Twain
+F. Scott Fitzgerald
+John Steinbeck
+A
+Literature
+1
+Ai là tác giả của "Đại gia Gatsby"?
+Mark Twain
+F. Scott Fitzgerald
+Ernest Hemingway
+William Faulkner
+B
+Literature
+2
+"Chúa tể những chiếc nhẫn" thuộc thể loại truyện gì?
+Lãng mạn
+Hài kịch
+Giả tưởng
+Kinh dị
+C
+Literature
+2
+Nhân vật chính trong "Hamlet" là ai?
+Macbeth
+Hamlet
+Othello
+Lear
+B
+Literature
+2
+Cuốn sách nào có nhân vật tên là Harry Potter?
+Người Hobbit
+Đấu trường sinh tử
+Harry Potter và hòn đá phù thủy
+Percy Jackson
+C
+Literature
+3
+Thuật ngữ văn học nào chỉ sự so sánh sử dụng từ "như" hoặc "là"?
+Ẩn dụ
+So sánh
+Nhân hóa
+Nói quá
+B
+Literature
+3
+Thuật ngữ văn học nào chỉ việc gán phẩm chất của con người cho vật vô tri?
+Ẩn dụ
+So sánh
+Nhân hóa
+Nói quá
+C
+Literature
+3
+Ai là tác giả của "1984"?
+Aldous Huxley
+George Orwell
+Ray Bradbury
+Philip K. Dick
+B
+Literature
+3
+Thơ sonnet là gì?
+Một bài thơ 10 dòng
+Một bài thơ 14 dòng
+Một bài thơ 16 dòng
+Một bài thơ 12 dòng
+B
+Computer
+1
+CPU là viết tắt của cụm từ nào?
+Central Processing Unit
+Computer Processing Unit
+Central Program Unit
+Computer Program Unit
+A
+Computer
+1
+RAM là viết tắt của cụm từ nào?
+Random Access Memory
+Read Only Memory
+Random Application Memory
+Read Application Memory
+A
+Computer
+1
+HTML là viết tắt của cụm từ nào?
+Hyper Text Markup Language
+Hyperlinks and Text Markup Language
+Home Tool Markup Language
+Hyper Text Management Language
+A
+Computer
+2
+Địa chỉ IP là gì?
+Tên máy tính
+Địa chỉ vật lý của máy tính
+Địa chỉ số duy nhất của máy tính
+Tốc độ internet của máy tính
+C
+Computer
+2
+Hệ điều hành là gì?
+Phần cứng của máy tính
+Phần mềm quản lý phần cứng và phần mềm của máy tính
+Một trò chơi máy tính
+Một loại bộ nhớ máy tính
+B
+Computer
+2
+URL là gì?
+Mã code của website
+Địa chỉ website
+Phần cứng của máy tính
+Một loại phần mềm
+B
+Computer
+3
+API là viết tắt của cụm từ nào?
+Application Programming Interface
+Advanced Program Interface
+Application Protocol Interface
+Advanced Protocol Interface
+A
+Computer
+3
+Tường lửa là gì?
+Một bộ phận máy tính
+Một phần mềm an ninh
+Một bộ nhớ máy tính
+Một loại trang web
+B
+Computer
+3
+Cơ sở dữ liệu là gì?
+Một nơi để lưu trữ tệp
+Một tập hợp dữ liệu có tổ chức
+Một công cụ để tạo trang web
+Một mạng máy tính
+B
+Computer
+3
+HTTP là viết tắt của cụm từ nào?
+Hyper Transfer Text Protocol
+Hyper Text Transfer Protocol
+Hypertext Transfer Technology
+Hyper Technology Transfer Protocol
+B
+Art
+1
+Ai là người vẽ bức tranh "Đêm đầy sao"?
+Leonardo da Vinci
+Vincent van Gogh
+Pablo Picasso
+Claude Monet
+B
+Art
+1
+Màu cơ bản là màu gì?
+Đỏ, Xanh dương, Vàng
+Xanh lá cây, Xanh dương, Vàng
+Đỏ, Xanh lá cây, Xanh dương
+Đỏ, Cam, Vàng
+A
+Art
+1
+Đâu là một công cụ được các nhà điêu khắc sử dụng?
+Bút chì
+Cọ vẽ
+Đục
+Tẩy
+C
+Art
+2
+Tranh fresco là gì?
+Một loại tranh vẽ trên thạch cao ướt
+Một loại bản vẽ trên giấy
+Một tác phẩm điêu khắc làm bằng đất sét
+Một loại đồ gốm
+A
+Art
+2
+Tranh cắt dán (collage) là gì?
+Một bức tranh làm bằng nhiều chất liệu
+Một tác phẩm điêu khắc làm bằng kim loại
+Một tác phẩm nghệ thuật được tạo ra bằng cách dán nhiều vật liệu khác nhau
+Một tác phẩm nghệ thuật sử dụng nước
+C
+Art
+2
+Phấn màu là gì?
+Một loại phấn mềm có màu
+Một loại sơn
+Một loại vải canvas
+Một loại giấy
+A
+Art
+3
+Phong trào nghệ thuật nào được biết đến với việc sử dụng màu sắc tươi sáng và hình dạng méo mó?
+Chủ nghĩa hiện thực
+Chủ nghĩa ấn tượng
+Chủ nghĩa siêu thực
+Chủ nghĩa biểu hiện
+D
+Art
+3
+Tỷ lệ vàng là gì?
+Một tỷ lệ toán học để tạo ra các hình thức thẩm mỹ
+Một tỷ lệ sử dụng màu sắc trong một bức tranh
+Một tỷ lệ cho lượng sơn cần thiết
+Một tỷ lệ để xác định giá của tác phẩm nghệ thuật
+A
+Art
+3
+Chiaroscuro là gì?
+Một kỹ thuật sử dụng màu sắc đậm
+Một kỹ thuật sử dụng sự tương phản mạnh mẽ giữa ánh sáng và bóng tối
+Một kỹ thuật để tạo ra phối cảnh
+Một kỹ thuật để tạo ra các hình thức trừu tượng
+B
+Art
+3
+Phong trào nghệ thuật nào tập trung vào các đối tượng hàng ngày và văn hóa đại chúng?
+Phục hưng
+Ba-rốc
+Nghệ thuật Pop
+Trừu tượng
+C

@@ -1,5 +1,6 @@
 #include "../include/exam.h"
 #include "../include/server.h"
+#include "../include/database.h" 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -167,11 +168,46 @@ void start_exam(Server* server, ExamRoom* room) {
 void handle_answer(ClientInfo* client, char answer) {
     ExamRoom* room = get_room(client->current_room_id);
     if (!room) {
-        printf("Error: Room not found for client %d\n", client->fd);
+        // Chế độ training
+        printf("Processing training answer '%c' from client %d (question %d)\n", 
+               answer, client->fd, client->current_question + 1);
+
+        // Kiểm tra đáp án và tăng điểm
+        if (answer == questions[client->question_ids[client->current_question]].correct_answer) {
+            client->score++;
+            char feedback[BUFFER_SIZE];
+            snprintf(feedback, BUFFER_SIZE, "Correct answer!\n");
+            send(client->fd, feedback, strlen(feedback), 0);
+        } else {
+            char feedback[BUFFER_SIZE];
+            snprintf(feedback, BUFFER_SIZE, "Wrong answer. The correct answer was %c\n", 
+                    questions[client->question_ids[client->current_question]].correct_answer);
+            send(client->fd, feedback, strlen(feedback), 0);
+        }
+
+        // Chuyển sang câu hỏi tiếp theo
+        client->current_question++;
+
+        // Nếu còn câu hỏi thì gửi câu tiếp theo
+        if (client->current_question < client->num_questions) {
+            send_question(client, client->current_question);
+        } else {
+            // Kết thúc training
+            char buffer[BUFFER_SIZE];
+            snprintf(buffer, BUFFER_SIZE, "Training completed! Your final score: %d/%d\n",
+                    client->score, client->num_questions);
+            send(client->fd, buffer, strlen(buffer), 0);
+
+            // Reset client state
+            client->current_question = -1;
+            printf("Client %d completed training with score %d/%d\n", 
+                   client->fd, client->score, client->num_questions);
+        }
         return;
     }
 
-    printf("Processing answer '%c' from client %d (question %d)\n", 
+    // Chế độ exam room - giữ nguyên code cũ
+    printf("Processing exam answer '%c' from client %d (question %d)\n", 
            answer, client->fd, client->current_question + 1);
 
     // Kiểm tra đáp án và tăng điểm
@@ -192,18 +228,13 @@ void handle_answer(ClientInfo* client, char answer) {
                 client->score, room->num_questions);
         send(client->fd, buffer, strlen(buffer), 0);
 
-        // Reset trạng thái client
+        // Reset client state
         client->current_question = -1;
         printf("Client %d completed exam with score %d/%d\n", 
                client->fd, client->score, room->num_questions);
 
         // Lưu kết quả vào file
-        FILE* file = fopen("results.txt", "a");
-        if (file) {
-            fprintf(file, "User: %s, Room: %d, Score: %d/%d, Time: %ld\n",
-                    client->username, room->room_id, 
-                    client->score, room->num_questions, time(NULL));
-            fclose(file);
-        }
+        save_exam_result(client->username, room->room_id, 
+                        client->score, room->num_questions);
     }
 }

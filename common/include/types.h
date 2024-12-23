@@ -15,6 +15,8 @@ typedef struct {
     int active;
     int current_question;
     int score;
+    int num_questions;     
+    int question_ids[MAX_QUESTIONS];
 } ClientInfo;
 
 typedef struct {

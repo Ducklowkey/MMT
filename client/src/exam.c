@@ -12,20 +12,25 @@ void handle_exam(Client* client) {
     fd_set readfds;
     int max_fd = client->socket;
     int exam_completed = 0;
+    char current_answer = '\0';  // Lưu đáp án hiện tại
 
     while (!exam_completed) {
         FD_ZERO(&readfds);
         FD_SET(STDIN_FILENO, &readfds);
         FD_SET(client->socket, &readfds);
 
-        int activity = select(max_fd + 1, &readfds, NULL, NULL, NULL);
+        struct timeval tv;
+        tv.tv_sec = 1;  // Timeout 1 giây
+        tv.tv_usec = 0;
+
+        int activity = select(max_fd + 1, &readfds, NULL, NULL, &tv);
 
         if (activity < 0) {
             print_error("Select error");
             break;
         }
 
-        // Check for server messages
+        // Kiểm tra tin nhắn từ server
         if (FD_ISSET(client->socket, &readfds)) {
             int valread = receive_message(client, buffer);
             if (valread <= 0) {
@@ -33,45 +38,39 @@ void handle_exam(Client* client) {
                 break;
             }
 
-            // Xử lý các tin nhắn từ server
-            if (strstr(buffer, "Exam has started") != NULL) {
-                clear_screen();
+            // Xử lý tin nhắn
+            if (strstr(buffer, "Question") != NULL) {
+                clear_screen();  // Xóa màn hình cũ
                 printf("\n%s", buffer);
-            }
-            else if (strstr(buffer, "Question") != NULL) {
-                printf("\n%s", buffer);
-                printf("Your answer (A/B/C/D): ");
+                printf("\nYour answer (A/B/C/D): ");
                 fflush(stdout);
+                current_answer = '\0';  // Reset đáp án
             }
-            else if (strstr(buffer, "Exam completed") != NULL) {
+            else if (strstr(buffer, "Exam completed") != NULL ||
+                     strstr(buffer, "Training completed") != NULL) {
                 printf("\n%s", buffer);
                 exam_completed = 1;
                 break;
             }
+            else {
+                printf("%s", buffer);
+            }
         }
 
-        // Check for user input
+        // Kiểm tra input từ người dùng
         if (FD_ISSET(STDIN_FILENO, &readfds)) {
-            char answer;
-            if (scanf(" %c", &answer) == 1) {
-                while (getchar() != '\n');  // Clear buffer
-                
-                // Convert to uppercase
-                answer = toupper(answer);
-                
-                // Validate input
-                if (answer >= 'A' && answer <= 'D') {
+            char input;
+            if (read(STDIN_FILENO, &input, 1) > 0) {
+                if (input >= 'a' && input <= 'd') input -= 32;  // Chuyển sang chữ hoa
+                if (input >= 'A' && input <= 'D') {
+                    current_answer = input;
                     char cmd[BUFFER_SIZE];
-                    snprintf(cmd, BUFFER_SIZE, "SUBMIT_ANSWER %c", answer);
-                    if (send_message(client, cmd) > 0) {
-                        printf("Answer submitted: %c\n", answer);
-                    } else {
+                    snprintf(cmd, BUFFER_SIZE, "SUBMIT_ANSWER %c", current_answer);
+                    if (send_message(client, cmd) < 0) {
                         print_error("Failed to send answer");
+                    } else {
+                        printf("\nSubmitted answer: %c\n", current_answer);
                     }
-                } else {
-                    print_error("Invalid answer. Please enter A, B, C, or D.");
-                    printf("Your answer (A/B/C/D): ");
-                    fflush(stdout);
                 }
             }
         }

@@ -1,11 +1,15 @@
 #include "../include/server.h"
 #include "../include/room.h"
 #include "../include/declarations.h"
+#include "../include/exam.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
+
+extern Question questions[MAX_QUESTIONS];  
+extern int num_questions; 
 
 #define MAX_FDS (MAX_CLIENTS + 1)  // +1 for server socket
 
@@ -389,4 +393,80 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
     
     send(client->fd, response, strlen(response), 0);
 }
+    else if (strncmp(buffer, "START_TRAINING", 14) == 0) {
+    printf("Processing training request: %s\n", buffer);
+    char* params = strchr(buffer, '|');
+    if (params) {
+        params++; // Skip separator
+        handle_training(client, params);
+    } else {
+        printf("Invalid training format\n");
+        char response[] = "Invalid training format\n";
+        send(client->fd, response, strlen(response), 0);
+    }
+}
+}
+
+void handle_training(ClientInfo* client, const char* params) {
+    int num_questions_requested, time_limit, difficulty;
+    char subject[50];
+
+    // Parse parameters
+    if (sscanf(params, "%d|%d|%d|%[^\n]", 
+               &num_questions_requested, &time_limit, &difficulty, subject) != 4) {
+        printf("Parse error: num_q=%d, time=%d, diff=%d, subject=%s\n",
+               num_questions_requested, time_limit, difficulty, subject);
+        send(client->fd, "Invalid format\n", strlen("Invalid format\n"), 0);
+        return;
+    }
+
+    printf("Training request: subject='%s', difficulty=%d, total questions in bank=%d\n", 
+           subject, difficulty, num_questions);  // num_questions là biến global từ exam.h
+    
+    int matched_indices[MAX_QUESTIONS];
+    int matched_count = 0;;
+
+    // Tìm trong toàn bộ ngân hàng câu hỏi
+    for (int i = 0; i < num_questions; i++) {  // num_questions thay vì total_questions
+        if (questions[i].difficulty == difficulty && 
+            strcasecmp(questions[i].subject, subject) == 0) {
+            printf("Found matching question: id=%d, subject='%s', difficulty=%d\n",
+                   i, questions[i].subject, questions[i].difficulty);
+            matched_indices[matched_count++] = i;
+        }
+    }
+
+    printf("Total matching questions found: %d\n", matched_count);
+
+    if (matched_count < num_questions_requested) {
+        char msg[BUFFER_SIZE];
+        snprintf(msg, BUFFER_SIZE, 
+                "Not enough questions available (only %d %s questions with difficulty %d)\n",
+                matched_count, subject, difficulty);
+        send(client->fd, msg, strlen(msg), 0);
+        return;
+    }
+
+    // Sau khi đã tìm đủ câu hỏi phù hợp
+    if (matched_count >= num_questions_requested) {
+        // Lưu trạng thái training cho client
+        client->current_question = 0;
+        client->score = 0;
+        client->num_questions = num_questions_requested;  // Quan trọng: Lưu số câu hỏi được yêu cầu
+        
+        // Lưu các câu hỏi được chọn
+        memcpy(client->question_ids, matched_indices, 
+               num_questions_requested * sizeof(int));  // Chỉ copy số câu hỏi được yêu cầu
+
+        // Gửi câu hỏi đầu tiên
+        Question* q = &questions[matched_indices[0]];
+        char buffer[BUFFER_SIZE];
+        snprintf(buffer, BUFFER_SIZE,
+                "Question 1/%d\n%s\nA) %s\nB) %s\nC) %s\nD) %s\n",
+                num_questions_requested,  // Sử dụng số câu hỏi được yêu cầu
+                q->question,
+                q->option_A, q->option_B, q->option_C, q->option_D);
+
+        send(client->fd, buffer, strlen(buffer), 0);
+    }
 }
