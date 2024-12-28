@@ -242,13 +242,10 @@ void handle_answer(ClientInfo* client, char answer) {
 }
 
 void get_available_subjects(char* subjects_list, size_t size) {
-    // Đảm bảo có đủ size cho "SUBJECTS|" và "\n"
-    size_t remaining_size = size - 10;  // Trừ đi độ dài của "SUBJECTS|" và "\n"
-    
     char* subjects[MAX_QUESTIONS];
     int num_subjects = 0;
 
-    // Thu thập unique subjects
+    // Thu thập subjects từ questions
     for (int i = 0; i < num_questions; i++) {
         int found = 0;
         for (int j = 0; j < num_subjects; j++) {
@@ -258,26 +255,17 @@ void get_available_subjects(char* subjects_list, size_t size) {
             }
         }
         if (!found) {
-            subjects[num_subjects++] = questions[i].subject;
+            subjects[num_subjects++] = strdup(questions[i].subject);
         }
     }
 
-    // Đóng gói thành chuỗi, kiểm tra size
+    // Đóng gói thành chuỗi
     subjects_list[0] = '\0';
-    size_t current_length = 0;
-    
     for (int i = 0; i < num_subjects; i++) {
-        size_t subject_len = strlen(subjects[i]);
-        // +1 cho dấu phẩy hoặc null terminator
-        if (current_length + subject_len + 1 > remaining_size) {
-            break;  // Dừng nếu không đủ space
-        }
-
-        if (i > 0) {
-            strcat(subjects_list, ",");
-            current_length++;
-        }
         strcat(subjects_list, subjects[i]);
-        current_length += subject_len;
+        if (i < num_subjects - 1) {
+            strcat(subjects_list, ",");
+        }
+        free(subjects[i]);
     }
 }

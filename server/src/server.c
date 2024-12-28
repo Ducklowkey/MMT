@@ -325,45 +325,45 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
 
     // Xóa room
     if (strcmp(buffer, "DELETE_ROOM") == 0) {
-    if (client->current_room_id != -1) {
-        ExamRoom* room = get_room(client->current_room_id);
-        if (!room || !room->is_active) {
-            send(client->fd, "Room not found or inactive\n", 
-                 strlen("Room not found or inactive\n"), 0);
+        if (client->current_room_id != -1) {
+            ExamRoom* room = get_room(client->current_room_id);
+            if (!room || !room->is_active) {
+                send(client->fd, "Room not found or inactive\n", 
+                strlen("Room not found or inactive\n"), 0);
             return;
-        }
+            }
 
-        if (is_room_creator(client->current_room_id, client->username)) {
-            int room_to_delete = client->current_room_id;
+            if (is_room_creator(client->current_room_id, client->username)) {
+                int room_to_delete = client->current_room_id;
             
             // Thông báo cho users trong phòng trước khi xóa
-            for (int i = 0; i < MAX_CLIENTS; i++) {
-                ClientInfo* other = &server->clients[i];
-                if (!other->active) continue;
+                for (int i = 0; i < MAX_CLIENTS; i++) {
+                    ClientInfo* other = &server->clients[i];
+                    if (!other->active) continue;
 
                 // Kiểm tra user có trong phòng không
-                for (int j = 0; j < room->user_count; j++) {
-                    if (strcmp(other->username, room->users[j]) == 0 && 
-                        other->fd != client->fd) {
-                        char msg[] = "Room has been deleted by creator\n";
-                        send(other->fd, msg, strlen(msg), 0);
-                        break;
+                    for (int j = 0; j < room->user_count; j++) {
+                        if (strcmp(other->username, room->users[j]) == 0 && other->fd != client->fd) {
+                            char msg[] = "Room has been deleted by creator\n";
+                            send(other->fd, msg, strlen(msg), 0);
+                            break;
+                        }
                     }
                 }
-            }
             
-            delete_exam_room(room_to_delete, server->clients);
-            send(client->fd, "ROOM_DELETED\n", strlen("ROOM_DELETED\n"), 0);
-        } else {
-            send(client->fd, "Only room creator can delete room\n", 
-                 strlen("Only room creator can delete room\n"), 0);
+                delete_exam_room(room_to_delete, server->clients);
+                send(client->fd, "ROOM_DELETED\n", strlen("ROOM_DELETED\n"), 0);
+            } else {
+                send(client->fd, "Only room creator can delete room\n", 
+                strlen("Only room creator can delete room\n"), 0);
+            }
+        } 
+        else {
+            send(client->fd, "You are not in any room\n", 
+            strlen("You are not in any room\n"), 0);
         }
-    } else {
-        send(client->fd, "You are not in any room\n", 
-             strlen("You are not in any room\n"), 0);
-    }
     return;
-}
+    }
 
     // ===== OTHER FUNCTIONS =====
     // Đăng xuất
@@ -436,5 +436,25 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
     if (strcmp(buffer, "LEAVE_PRACTICE") == 0) {
          printf("Client has left practice mode.\n");
     } 
+
+    if (strcmp(buffer, "GET_SUBJECTS") == 0) {
+        char subjects_list[BUFFER_SIZE];
+        char response[BUFFER_SIZE];
+    
+        // Lấy danh sách môn học, để lại không gian cho "SUBJECTS|" và "\n"
+        get_available_subjects(subjects_list, BUFFER_SIZE - 10);  // -10 để dành chỗ cho "SUBJECTS|" và "\n"
+    
+        // Tạo response với kiểm tra độ dài
+        int prefix_len = snprintf(response, BUFFER_SIZE, "SUBJECTS|");
+        if (prefix_len < BUFFER_SIZE) {
+            strncat(response, subjects_list, BUFFER_SIZE - prefix_len - 2);  // -2 cho \n và null terminator
+            strcat(response, "\n");
+            send(client->fd, response, strlen(response), 0);
+        } else {
+        // Xử lý lỗi nếu cần
+            const char* error_msg = "Error: Subject list too long\n";
+            send(client->fd, error_msg, strlen(error_msg), 0);
+        }
+    }
 }
 

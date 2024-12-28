@@ -16,8 +16,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-
-
 // Server function prototypes
 Server* create_server(void);
 void destroy_server(Server* server);

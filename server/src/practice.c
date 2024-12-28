@@ -104,16 +104,35 @@ int set_questions_practice(ClientDataPractice* client) {
     filter_questions(medium_questions, &medium_count, 2, client->subjects_practice);
     filter_questions(hard_questions, &hard_count, 3, client->subjects_practice);
 
-    if (easy_count < client->num_easy || medium_count < client->num_medium || hard_count < client->num_hard) {
-        const char *error_msg = "ERROR_FORMAT:Not enough questions available for the selected criteria.\n";
+    // Điều chỉnh số lượng câu hỏi theo số lượng có sẵn
+    if (client->num_easy > easy_count) {
+        printf("Điều chỉnh số câu hỏi dễ từ %d xuống %d\n", client->num_easy, easy_count);
+        client->num_easy = easy_count;
+    }
+    if (client->num_medium > medium_count) {
+        printf("Điều chỉnh số câu hỏi trung bình từ %d xuống %d\n", client->num_medium, medium_count);
+        client->num_medium = medium_count;
+    }
+    if (client->num_hard > hard_count) {
+        printf("Điều chỉnh số câu hỏi khó từ %d xuống %d\n", client->num_hard, hard_count);
+        client->num_hard = hard_count;
+    }
+
+    // Cập nhật tổng số câu hỏi
+    int total_available = client->num_easy + client->num_medium + client->num_hard;
+    if (total_available == 0) {
+        const char *error_msg = "ERROR_FORMAT:Không tìm thấy câu hỏi phù hợp với các tiêu chí đã chọn.\n";
         send(client->socket, error_msg, strlen(error_msg), 0);
         return -1;
     }
 
+    client->num_questions = total_available;
+    
+    // Chọn câu hỏi ngẫu nhiên
     srand(time(NULL));
-
-    // Chọn câu hỏi ngẫu nhiên theo độ khó
     int index = 0;
+
+    // Thêm câu hỏi dễ
     for (int i = 0; i < client->num_easy; i++) {
         client->questions_practice[index] = malloc(sizeof(Question));
         if (client->questions_practice[index]) {
@@ -121,6 +140,8 @@ int set_questions_practice(ClientDataPractice* client) {
             index++;
         }
     }
+
+    // Thêm câu hỏi trung bình
     for (int i = 0; i < client->num_medium; i++) {
         client->questions_practice[index] = malloc(sizeof(Question));
         if (client->questions_practice[index]) {
@@ -128,6 +149,8 @@ int set_questions_practice(ClientDataPractice* client) {
             index++;
         }
     }
+
+    // Thêm câu hỏi khó
     for (int i = 0; i < client->num_hard; i++) {
         client->questions_practice[index] = malloc(sizeof(Question));
         if (client->questions_practice[index]) {
@@ -135,6 +158,14 @@ int set_questions_practice(ClientDataPractice* client) {
             index++;
         }
     }
+
+    // Thông báo số lượng câu hỏi thực tế
+    char info_msg[256];
+    snprintf(info_msg, sizeof(info_msg), 
+        "Bài tập gồm %d câu: %d dễ, %d trung bình, %d khó\n",
+        client->num_questions, client->num_easy, client->num_medium, client->num_hard);
+    send(client->socket, info_msg, strlen(info_msg), 0);
+
     return 0;
 }
 // Lọc các câu hỏi dựa trên độ khó và môn học
@@ -233,3 +264,4 @@ int is_time_remaining(ClientDataPractice* client) {
         return 0; // Hết thời gian
     }
 }
+

@@ -1,65 +1,88 @@
 #include "../include/practice.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <unistd.h> // Để dùng read và write
 #include <sys/socket.h>  // Dành cho Linux/Mac
 #include <arpa/inet.h>   // Dành cho Linux/Mac
 
 // Hàm cho phép người dùng lựa chọn thông số bài luyện tập
-void configure_practice(int* num_questions_total, int* time_limit, int* num_easy, int* num_medium, int* num_hard, char* subjects) {
+void configure_practice(Client* client, int* num_questions_total, int* time_limit, int* num_easy, int* num_medium, int* num_hard, char* subjects) {
+    printf("Chọn môn học:\n");
+    print_subjects_menu(client);  // Lấy danh sách môn học từ server
     
-    printf("Select subjects:\n");
-    printf("1. Math\n2. Geography\n3. History\n4. Literature\n5. English\n6. Physics\n7. Chemistry\n8. Biology\n9. All\n");
+    char buffer[BUFFER_SIZE];
+    send_message(client, "GET_SUBJECTS");
+    memset(buffer, 0, BUFFER_SIZE);
+    
+    if (receive_message(client, buffer) <= 0 || strncmp(buffer, "SUBJECTS|", 9) != 0) {
+        printf("Không thể lấy danh sách môn học từ server\n");
+        return;
+    }
 
-    int selected_subjects[9] = {0};
+    // Phân tích danh sách môn học
+    char* subjects_list = buffer + 9; // Bỏ qua "SUBJECTS|"
+    char* subject_names[MAX_QUESTIONS];
+    int num_subjects = 0;
+
+    // Tách các môn học
+    char* subject = strtok(subjects_list, ",");
+    while (subject != NULL && num_subjects < MAX_QUESTIONS) {
+        subject_names[num_subjects++] = strdup(subject);
+        subject = strtok(NULL, ",");
+    }
+
+    // In menu môn học
+    printf("\nChọn môn học:\n");
+    for (int i = 0; i < num_subjects; i++) {
+        printf("%d. %s\n", i + 1, subject_names[i]);
+    }
+
+    // Chọn môn học
+    int selected_subjects[MAX_QUESTIONS] = {0};
     int subject_choice;
-    printf("Enter subject numbers (0 to finish selection):\n");
+    printf("\nNhập số thứ tự môn học (0 để kết thúc):\n");
     while (1) {
-        printf("Subject number: ");
+        printf("Số thứ tự: ");
         scanf("%d", &subject_choice);
 
         if (subject_choice == 0) {
             break;
-        } else if (subject_choice >= 1 && subject_choice <= 9) {
+        } else if (subject_choice >= 1 && subject_choice <= num_subjects) {
             selected_subjects[subject_choice - 1] = 1;
         } else {
-            printf("Invalid choice. Try again.\n");
+            printf("Lựa chọn không hợp lệ. Vui lòng thử lại.\n");
         }
     }
 
+    // Tạo chuỗi môn học đã chọn
     subjects[0] = '\0';
-    for (int i = 0; i < 9; i++) {
+    for (int i = 0; i < num_subjects; i++) {
         if (selected_subjects[i]) {
-            switch (i + 1) {
-                case 1: strcat(subjects, "Math,"); break;
-                case 2: strcat(subjects, "Geography,"); break;
-                case 3: strcat(subjects, "History,"); break;
-                case 4: strcat(subjects, "Literature,"); break;
-                case 5: strcat(subjects, "English,"); break;
-                case 6: strcat(subjects, "Physics,"); break;
-                case 7: strcat(subjects, "Chemistry,"); break;
-                case 8: strcat(subjects, "Biology,"); break;
-                case 9: strcat(subjects, "All,"); break;
+            if (strlen(subjects) > 0) {
+                strcat(subjects, ",");
             }
+            strcat(subjects, subject_names[i]);
         }
     }
 
-    if (strlen(subjects) > 0) {
-        subjects[strlen(subjects) - 1] = '\0'; // Remove trailing comma
+    // Giải phóng bộ nhớ
+    for (int i = 0; i < num_subjects; i++) {
+        free(subject_names[i]);
     }
 
-    printf("Select total number of questions:\n");
+    printf("\nChọn tổng số câu hỏi:\n");
     printf("1. 15\n2. 30\n3. 45\n4. 60\n");
     int question_choice;
     do {
-        printf("Enter your choice: ");
+        printf("Nhập lựa chọn: ");
         scanf("%d", &question_choice);
         switch (question_choice) {
             case 1: *num_questions_total = 15; break;
             case 2: *num_questions_total = 30; break;
             case 3: *num_questions_total = 45; break;
             case 4: *num_questions_total = 60; break;
-            default: printf("Invalid choice. Try again.\n");
+            default: printf("Lựa chọn không hợp lệ. Vui lòng thử lại.\n");
         }
     } while (question_choice < 1 || question_choice > 4);
 
@@ -87,6 +110,7 @@ void configure_practice(int* num_questions_total, int* time_limit, int* num_easy
     printf("Enter time limit (in minutes): ");
     scanf("%d", time_limit);
 }
+
 // Hàm gửi thông số bài luyện tập đến server
 void send_practice_config(Client* client, int num_questions_total, int time_limit, int num_easy, int num_medium, int num_hard, char* subjects) {
     // Chuẩn bị thông điệp gửi đi
@@ -108,15 +132,16 @@ void request_time_left(Client* client) {
 }
 
 // Hàm send thông điệp START_PRACTICE VÀ FORMAT bài luyện tập cho server
-void start_and_set_format(Client* client){
-   char buffer[1024];
+void start_and_set_format(Client* client) {
+    char buffer[1024];
     char subjects[256];
     int num_questions_total = 0, num_easy = 0, num_medium = 0, num_hard = 0, time_limit = 0;
 
-    // Gọi hàm cấu hình bài luyện tập
-    configure_practice(&num_questions_total, &time_limit, &num_easy, &num_medium, &num_hard, subjects);
-    send_practice_config(client, num_questions_total, time_limit, num_easy, num_medium, num_hard, subjects); 
+    // Gọi hàm configure_practice với tham số client
+    configure_practice(client, &num_questions_total, &time_limit, &num_easy, &num_medium, &num_hard, subjects);
+    send_practice_config(client, num_questions_total, time_limit, num_easy, num_medium, num_hard, subjects);
 }
+
 void handle_practice(Client* client) {
     char buffer[1024];
     printf("Enter your answer (A/B/C/D or type 'SUBMIT' to quit or type 'TIME' to request time left): \n");
@@ -210,5 +235,33 @@ void submit_practice_early(Client* client) {
         printf("Submit success.\n");
     } else {
         printf("Submit failed .\n");
+    }
+}
+
+void print_subjects_menu(Client* client) {  
+    char subjects_list[BUFFER_SIZE];
+    char command[] = "GET_SUBJECTS";
+    
+    if (send_message(client, command) < 0) {
+        printf("Lỗi khi gửi yêu cầu lấy danh sách môn học\n");
+        return;
+    }
+
+    // Nhận danh sách môn học
+    char buffer[BUFFER_SIZE];
+    if (receive_message(client, buffer) > 0) {
+        if (strncmp(buffer, "SUBJECTS|", 9) == 0) {
+            char* subjects_str = buffer + 9;
+            char* subject;
+            int index = 1;
+            
+            printf("Chọn môn học:\n");
+            // Tách và in từng môn học
+            subject = strtok(subjects_str, ",");
+            while (subject != NULL) {
+                printf("%d. %s\n", index++, subject);
+                subject = strtok(NULL, ",");
+            }
+        }
     }
 }
