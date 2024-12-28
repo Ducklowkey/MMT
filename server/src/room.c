@@ -65,32 +65,34 @@ int join_exam_room(int room_id, const char* username, ClientInfo* client) {
 void leave_exam_room(int room_id, const char* username, ClientInfo* client) {
     printf("User %s attempting to leave room %d\n", username, room_id);
     
-    for (int i = 0; i < num_rooms; i++) {
-        if (exam_rooms[i].room_id == room_id && exam_rooms[i].is_active) {
-            for (int j = 0; j < exam_rooms[i].user_count; j++) {
-                if (strcmp(exam_rooms[i].users[j], username) == 0) {
-                    // Di chuyển các user còn lại lên
-                    for (int k = j; k < exam_rooms[i].user_count - 1; k++) {
-                        strcpy(exam_rooms[i].users[k], exam_rooms[i].users[k + 1]);
-                    }
-                    exam_rooms[i].user_count--;
-                    
-                    // Reset client state
-                    client->current_room_id = -1;
-                    client->current_question = -1;
-                    client->score = 0;
+    ExamRoom* room = get_room(room_id);
+    if (!room) {
+        printf("Room %d not found or not active\n", room_id);
+        return;
+    }
 
-                    printf("User %s left room %d\n", username, room_id);
-                    
-                    // Deactivate room if empty
-                    if (exam_rooms[i].user_count == 0) {
-                        exam_rooms[i].is_active = 0;
-                        exam_rooms[i].status = 0;
-                        printf("Room %d deactivated (no users)\n", room_id);
-                    }
-                    return;
-                }
+    for (int j = 0; j < room->user_count; j++) {
+        if (strcmp(room->users[j], username) == 0) {
+            // Di chuyển các user còn lại lên
+            for (int k = j; k < room->user_count - 1; k++) {
+                strcpy(room->users[k], room->users[k + 1]);
             }
+            room->user_count--;
+            
+            // Reset client state
+            client->current_room_id = -1;  // Reset room_id
+            client->current_question = -1;
+            client->score = 0;
+
+            printf("User %s left room %d\n", username, room_id);
+            
+            // Deactivate room if empty
+            if (room->user_count == 0) {
+                room->is_active = 0;
+                room->status = 0;
+                printf("Room %d deactivated (no users)\n", room_id);
+            }
+            break;
         }
     }
 }
@@ -98,28 +100,40 @@ void leave_exam_room(int room_id, const char* username, ClientInfo* client) {
 void delete_exam_room(int room_id, ClientInfo* clients) {
     printf("Attempting to delete room %d\n", room_id);
     
-    for (int i = 0; i < num_rooms; i++) {
-        if (exam_rooms[i].room_id == room_id && exam_rooms[i].is_active) {
-            // Notify and remove all users
-            for (int j = 0; j < exam_rooms[i].user_count; j++) {
-                for (int k = 0; k < MAX_CLIENTS; k++) {
-                    if (clients[k].active && 
-                        strcmp(clients[k].username, exam_rooms[i].users[j]) == 0) {
-                        char msg[] = "Room has been deleted by creator\n";
-                        send(clients[k].fd, msg, strlen(msg), 0);
-                        clients[k].current_room_id = -1;
-                        clients[k].current_question = -1;
-                        clients[k].score = 0;
-                    }
-                }
+    ExamRoom* room = get_room(room_id);
+    if (!room || !room->is_active) {
+        printf("Room %d not found or already inactive\n", room_id);
+        return;
+    }
+
+    // Lưu danh sách users trong phòng trước khi xóa
+    char users_in_room[MAX_CLIENTS][MAX_USERNAME];
+    int num_users = room->user_count;
+    for (int i = 0; i < num_users; i++) {
+        strcpy(users_in_room[i], room->users[i]);
+    }
+
+    // Deactivate room
+    room->is_active = 0;
+    room->status = 0;
+    room->user_count = 0;
+
+    // Thông báo và reset state cho các users trong phòng
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (!clients[i].active) continue;
+
+        // Chỉ thông báo cho users đang trong phòng
+        for (int j = 0; j < num_users; j++) {
+            if (strcmp(clients[i].username, users_in_room[j]) == 0) {
+                clients[i].current_room_id = -1;
+                clients[i].current_question = -1;
+                clients[i].score = 0;
+                break;
             }
-            exam_rooms[i].is_active = 0;
-            exam_rooms[i].status = 0;
-            exam_rooms[i].user_count = 0;
-            printf("Room %d deleted successfully\n", room_id);
-            break;
         }
     }
+
+    printf("Room %d deleted successfully\n", room_id);
 }
 
 void get_room_list(char* buffer) {

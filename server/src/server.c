@@ -2,6 +2,7 @@
 #include "../include/room.h"
 #include "../include/declarations.h"
 #include "../include/exam.h"
+#include "../include/practice.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -278,19 +279,19 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
     // ===== ROOM MANAGEMENT =====
     // Tạo room mới
     if (strncmp(buffer, "CREATE_ROOM", 11) == 0) {
-        char* room_name = buffer + 12;
-        if (strlen(room_name) > 0) {
-            int room_id = create_exam_room(room_name, client->username);
-            if (room_id > 0) {
-                client->current_room_id = room_id;
-                snprintf(response, BUFFER_SIZE, "ROOM_CREATED %d\n", room_id);
-            } else {
-                snprintf(response, BUFFER_SIZE, "CREATE_FAILED\n");
-            }
-            send(client->fd, response, strlen(response), 0);
+    char* room_name = buffer + 12;
+    if (strlen(room_name) > 0) {
+        int room_id = create_exam_room(room_name, client->username);
+        if (room_id > 0) {
+            client->current_room_id = room_id;
+            snprintf(response, BUFFER_SIZE, "ROOM_CREATED %d\n", room_id);
+        } else {
+            snprintf(response, BUFFER_SIZE, "CREATE_FAILED\n");
         }
-        return;
+        send(client->fd, response, strlen(response), 0);
     }
+    return;
+}
 
     // Liệt kê rooms
     if (strcmp(buffer, "LIST_ROOMS") == 0) {
@@ -324,32 +325,45 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
 
     // Xóa room
     if (strcmp(buffer, "DELETE_ROOM") == 0) {
-        if (client->current_room_id != -1) {
-            if (is_room_creator(client->current_room_id, client->username)) {
-                int room_to_delete = client->current_room_id;
-                
-                // Thông báo cho các user khác trong room
-                for (int i = 0; i < MAX_CLIENTS; i++) {
-                    ClientInfo* other = &server->clients[i];
-                    if (other->active && other->current_room_id == room_to_delete && other->fd != client->fd) {
-                        send(other->fd, "Room has been deleted by creator\n", 
-                             strlen("Room has been deleted by creator\n"), 0);
-                        other->current_room_id = -1;
+    if (client->current_room_id != -1) {
+        ExamRoom* room = get_room(client->current_room_id);
+        if (!room || !room->is_active) {
+            send(client->fd, "Room not found or inactive\n", 
+                 strlen("Room not found or inactive\n"), 0);
+            return;
+        }
+
+        if (is_room_creator(client->current_room_id, client->username)) {
+            int room_to_delete = client->current_room_id;
+            
+            // Thông báo cho users trong phòng trước khi xóa
+            for (int i = 0; i < MAX_CLIENTS; i++) {
+                ClientInfo* other = &server->clients[i];
+                if (!other->active) continue;
+
+                // Kiểm tra user có trong phòng không
+                for (int j = 0; j < room->user_count; j++) {
+                    if (strcmp(other->username, room->users[j]) == 0 && 
+                        other->fd != client->fd) {
+                        char msg[] = "Room has been deleted by creator\n";
+                        send(other->fd, msg, strlen(msg), 0);
+                        break;
                     }
                 }
-                
-                delete_exam_room(room_to_delete, server->clients);
-                client->current_room_id = -1;
-                send(client->fd, "ROOM_DELETED\n", strlen("ROOM_DELETED\n"), 0);
-            } else {
-                send(client->fd, "Only room creator can delete room\n", 
-                     strlen("Only room creator can delete room\n"), 0);
             }
+            
+            delete_exam_room(room_to_delete, server->clients);
+            send(client->fd, "ROOM_DELETED\n", strlen("ROOM_DELETED\n"), 0);
         } else {
-            send(client->fd, "You are not in any room\n", strlen("You are not in any room\n"), 0);
+            send(client->fd, "Only room creator can delete room\n", 
+                 strlen("Only room creator can delete room\n"), 0);
         }
-        return;
+    } else {
+        send(client->fd, "You are not in any room\n", 
+             strlen("You are not in any room\n"), 0);
     }
+    return;
+}
 
     // ===== OTHER FUNCTIONS =====
     // Đăng xuất
@@ -371,14 +385,56 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
         return;
     }
 
-    // Nhận môn học 
-    if (strcmp(buffer, "GET_SUBJECTS") == 0) {
-        char subjects_list[BUFFER_SIZE - 10];  // Để lại space cho "SUBJECTS|" và "\n"
-        get_available_subjects(subjects_list, sizeof(subjects_list));
-    
-        char response[BUFFER_SIZE];
-        snprintf(response, BUFFER_SIZE, "SUBJECTS|%s\n", subjects_list);
-        send(client->fd, response, strlen(response), 0);
+
+    if (strncmp(buffer, "START_PRACTICE ",15) == 0) {
+        printf("Processing START_PRACTICE for client %d...\n", client->fd);
+            int num_questions, time_limit, num_easy, num_medium, num_hard;
+             char subjects[256];
+        // printf("%s\n", buffer);
+            // Phân tích cấu hình
+            if (sscanf(buffer, "START_PRACTICE %d,%d,%d,%d,%d,%255[^\n]",
+                    &num_questions, &time_limit, &num_easy, &num_medium, &num_hard, subjects) == 6) {
+                send(client->fd, "PRACTICE_ACCEPT\n", 30, 0);
+                client->client_practice = create_client_data_practice(client->fd, num_questions, time_limit, num_easy, num_medium, num_hard, subjects);
+                //printf("Client practice: %p\n", client_practice);
+                if (set_questions_practice(client->client_practice) == -1) {
+                    printf("Failed to send practice question.\n");
+                    return;
+                }
+                if (client->client_practice){ 
+                    client->client_practice->start_time = time(NULL);
+                   // printf("Readable time: %s", ctime(&current_time)); 
+                    send_practice_question(client->client_practice, 0); // câu hỏi đầu tiên
+                }
+            } else {
+                printf("Failed to parse practice config.\n");
+            }
     }
+    
+
+    if(strncmp(buffer, "SUBMIT_PRACTICE_ANSWER", 22) == 0) {
+         char answer[100]; // Biến để lưu câu trả lời
+        // Sử dụng sscanf để tách giá trị answer
+        if (is_time_remaining(client->client_practice)){
+            if (sscanf(buffer, "SUBMIT_PRACTICE_ANSWER  %s\n", answer) == 1) {
+                printf("Answer: %s\n", answer); // In câu trả lời
+                handel_answer_practice(client->client_practice, answer);
+            } else {
+                printf("Fail to sscanf answer!\n");
+            }
+        }
+        else {
+            printf("Time out!\n");
+            char timeout_message[1024];
+            int score = calculate_score_practice(client->client_practice);
+            snprintf(timeout_message, sizeof(timeout_message), "TIMEOUT: Time out! - SCORE: %d/%d\n",
+            score, client->client_practice->num_questions);
+            send(client->fd, timeout_message, strlen(timeout_message), 0);
+        }
+    }
+
+    if (strcmp(buffer, "LEAVE_PRACTICE") == 0) {
+         printf("Client has left practice mode.\n");
+    } 
 }
 

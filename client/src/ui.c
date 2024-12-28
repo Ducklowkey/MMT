@@ -1,5 +1,6 @@
 // client/src/ui.c
 #include "../include/ui.h"
+#include "../include/practice.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,18 +16,29 @@ void print_main_menu(void) {
     printf("\n=== Main Menu ===\n");
     printf("1. Create Exam Room\n");
     printf("2. Join Exam Room\n");  
-    printf("3. Logout\n");
+    printf("3. Practice Mode\n");
+    printf("4 Logout\n");
 }
 
-void print_room_menu(int is_creator) {
+void print_practice_room_menu(void) {
+    printf("\n=== Practice Mode Menu ===\n");
+    printf("1. Start Practice\n");      
+    printf("2. Leave Practice Mode\n");      
+}
+
+void print_room_menu(int is_creator, int exam_completed) {
     printf("\n=== Exam Room Menu ===\n");
     if (is_creator) {
-        printf("1. Start Exam\n");
+        if (!exam_completed) {
+            printf("1. Start Exam\n");
+        }
         printf("2. Leave Room\n");
         printf("3. Delete Room\n");
     } else {
         printf("1. Leave Room\n");
-        printf("\nWaiting for exam to start...\n");
+        if (!exam_completed) {
+            printf("\nWaiting for exam to start...\n");
+        }
     }
     printf("\nChoose an option: ");
 }
@@ -47,13 +59,90 @@ void print_success(const char* message) {
     printf("\033[1;32m%s\033[0m\n", message);
 }
 
+void handle_practice_menu(Client* client) { // Chế độ luyện tập 
+    char buffer[BUFFER_SIZE];  // Bộ đệm để lưu dữ liệu nhận từ server
+    fd_set readfds;            // Bộ file descriptor để kiểm tra đầu vào
+    int max_fd = client->socket;  // File descriptor lớn nhất (socket)
+
+    while (1) {
+        print_practice_room_menu();
+        // Thiết lập bộ readfds
+        FD_ZERO(&readfds);
+        FD_SET(STDIN_FILENO, &readfds);  // Kiểm tra đầu vào từ người dùng
+        FD_SET(client->socket, &readfds);  // Kiểm tra dữ liệu từ server
+
+        int activity = select(max_fd + 1, &readfds, NULL, NULL, NULL);  // Đợi sự kiện từ stdin hoặc socket
+        if (activity < 0) {
+            print_error("Select error");
+            break;
+        }
+
+        // Kiểm tra nếu có dữ liệu từ server
+        if (FD_ISSET(client->socket, &readfds)) {
+            int valread = receive_message(client, buffer);
+            if (valread <= 0) {
+                print_error("Server disconnected");
+                return;
+            }
+            printf("\n%s\n", buffer);  // Hiển thị thông báo từ server
+
+            // Kiểm tra nếu server thông báo về sự thay đổi trạng thái
+            if (strstr(buffer, "You can now start practicing") != NULL) {
+                printf("You can start practicing now.\n");
+            }
+        }
+
+        // Kiểm tra đầu vào từ người dùng
+        if (FD_ISSET(STDIN_FILENO, &readfds)) {
+            int choice;
+            if (scanf("%d", &choice) != 1) {  // Kiểm tra đầu vào hợp lệ
+                while (getchar() != '\n');  // Loại bỏ ký tự dư thừa
+                print_error("Invalid input");
+                continue;
+            }
+            while (getchar() != '\n');  // Loại bỏ ký tự dư thừa
+
+            switch (choice) {
+                case 1:
+                 {  // Bắt đầu luyện tập
+                            //handle_practice(client);
+                            start_and_set_format(client);
+                            char bufffer[BUFFER_SIZE];
+                            int bytes_received = read(client->socket, buffer, sizeof(buffer) - 1);
+                            if (bytes_received <= 0) {
+                                printf("Disconnected from server.\n");
+                                break;
+                            }
+                            printf("%s ",buffer);
+                            if(strcmp(buffer,"PRACTICE_ACCEPT\n")==0) handle_practice(client);
+                            break;  
+
+                }
+                case 2:  // Rời chế độ luyện tập
+                    if (send_message(client, "LEAVE_PRACTICE") >= 0) {
+                        print_success("Left practice mode");
+                        return;  // Quay lại menu chính hoặc thoát
+                    } else {
+                        print_error("Failed to leave practice mode");
+                    }
+                    break;
+
+                default:
+                    print_error("Invalid option");
+                    break;
+            }
+        }
+    }
+}
+
 void handle_room_menu(Client* client) {
     char buffer[BUFFER_SIZE];
     fd_set readfds;
     int max_fd = client->socket;
+    int exam_completed = 0;  // Thêm flag kiểm tra đã thi xong
 
     while (1) {
-        print_room_menu(client->is_room_creator);
+        print_room_menu(client->is_room_creator, exam_completed);  // Thêm tham số exam_completed
         
         FD_ZERO(&readfds);
         FD_SET(STDIN_FILENO, &readfds);
@@ -78,13 +167,21 @@ void handle_room_menu(Client* client) {
             if (strstr(buffer, "Exam has started") != NULL && !client->is_room_creator) {
                 printf("\n%s", buffer);
                 handle_exam(client);  // Chuyển sang màn hình thi
-                return;
+                exam_completed = 1;   // Set flag đã thi xong
+                continue;            // Quay lại menu room
+            }
+
+            // Nếu nhận được thông báo kết thúc bài thi
+            if (strstr(buffer, "Exam completed") != NULL) {
+                printf("\n%s", buffer);
+                exam_completed = 1;  // Set flag đã thi xong
+                continue;           // Quay lại menu room
             }
             
             printf("\n%s", buffer);
         }
 
-        // Check for user input only if no message from server
+        // Check for user input 
         if (FD_ISSET(STDIN_FILENO, &readfds)) {
             int choice;
             if (scanf("%d", &choice) != 1) {
@@ -97,8 +194,12 @@ void handle_room_menu(Client* client) {
             if (client->is_room_creator) {
                 switch (choice) {
                     case 1: // Start Exam
-                        if (send_message(client, "START_EXAM") >= 0) {
-                            // Chủ room không cần thêm xử lý, chỉ đợi thông báo từ server
+                        if (!exam_completed) {  // Chỉ cho phép start nếu chưa thi
+                            if (send_message(client, "START_EXAM") >= 0) {
+                                // Chủ room không cần thêm xử lý
+                            }
+                        } else {
+                            print_error("Exam already completed");
                         }
                         break;
 
@@ -236,8 +337,15 @@ void handle_main_menu(Client* client) {
                 }
                 break;
             }
+
+            case 3: {  // Chế độ luyện tập
+                print_success("Starting practice mode...");
+                handle_practice_menu(client);
+                
+                break;
+            }
             
-            case 3: // 
+            case 4: // 
                 if (send_message(client, "LOGOUT") >= 0) {
                     receive_message(client, buffer); // Đợi phản hồi từ server
                     print_success("Logged out successfully");
