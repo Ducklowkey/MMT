@@ -9,57 +9,8 @@
 #include <unistd.h>
 
 // Khai báo mảng câu hỏi và biến số lượng câu hỏi
-Question all_questions[MAX_QUESTIONS];
-int num_all_question = 0;
-//ClientDataPractice* client; 
-// Hàm nạp câu hỏi từ file
-void load_all_question(void) {
-    FILE* file = fopen("questions.txt", "r");
-    if (!file) {
-        perror("Cannot open questions file");
-        return;
-    }
-    
-    char line[BUFFER_SIZE];
-    while (num_all_question < MAX_QUESTIONS && fgets(line, BUFFER_SIZE, file)) {
-        Question* q = &all_questions[num_all_question];
-
-        line[strcspn(line, "\n")] = 0;
-        strncpy(q->subject, line, sizeof(q->subject) - 1);
-
-        if (!fgets(line, BUFFER_SIZE, file)) break;
-        q->difficulty = atoi(line);
-
-        if (!fgets(line, BUFFER_SIZE, file)) break;
-        line[strcspn(line, "\n")] = 0;
-        strncpy(q->question, line, sizeof(q->question) - 1);
-
-        if (!fgets(line, BUFFER_SIZE, file)) break;
-        line[strcspn(line, "\n")] = 0;
-        strncpy(q->option_A, line, sizeof(q->option_A) - 1);
-
-        if (!fgets(line, BUFFER_SIZE, file)) break;
-        line[strcspn(line, "\n")] = 0;
-        strncpy(q->option_B, line, sizeof(q->option_B) - 1);
-
-        if (!fgets(line, BUFFER_SIZE, file)) break;
-        line[strcspn(line, "\n")] = 0;
-        strncpy(q->option_C, line, sizeof(q->option_C) - 1);
-
-        if (!fgets(line, BUFFER_SIZE, file)) break;
-        line[strcspn(line, "\n")] = 0;
-        strncpy(q->option_D, line, sizeof(q->option_D) - 1);
-
-        if (!fgets(line, BUFFER_SIZE, file)) break;
-        q->correct_answer = line[0];
-
-        num_all_question++;
-    }
-
-    fclose(file);
-    printf("Loaded %d questions\n", num_all_question);
-}
-
+extern Question questions[MAX_QUESTIONS];
+extern int num_questions;
 
 ClientDataPractice* create_client_data_practice(int socket, int num_questions, int time_limit, int num_easy, int num_medium, int num_hard, const char* subjects) {
     // Kiểm tra các tham số đầu vào
@@ -110,7 +61,6 @@ ClientDataPractice* create_client_data_practice(int socket, int num_questions, i
 int set_questions_practice(ClientDataPractice* client) {
     Question easy_questions[MAX_QUESTIONS], medium_questions[MAX_QUESTIONS], hard_questions[MAX_QUESTIONS];
     int easy_count, medium_count, hard_count;
-    load_all_question();
 
     // Lọc câu hỏi theo độ khó và môn học
     filter_questions(easy_questions, &easy_count, 1, client->subjects_practice);
@@ -119,15 +69,15 @@ int set_questions_practice(ClientDataPractice* client) {
 
     // Điều chỉnh số lượng câu hỏi theo số lượng có sẵn
     if (client->num_easy > easy_count) {
-        printf("Điều chỉnh số câu hỏi dễ từ %d xuống %d\n", client->num_easy, easy_count);
+        printf("Do không đủ số lượng câu hỏi , điều chỉnh số câu hỏi dễ từ %d xuống %d ...\n", client->num_easy, easy_count);
         client->num_easy = easy_count;
     }
     if (client->num_medium > medium_count) {
-        printf("Điều chỉnh số câu hỏi trung bình từ %d xuống %d\n", client->num_medium, medium_count);
+        printf("Do không đủ số lượng câu hỏi , điều chỉnh số câu hỏi dễ từ %d xuống %d ...\n", client->num_medium, medium_count);
         client->num_medium = medium_count;
     }
     if (client->num_hard > hard_count) {
-        printf("Điều chỉnh số câu hỏi khó từ %d xuống %d\n", client->num_hard, hard_count);
+        printf("Do không đủ số lượng câu hỏi , điều chỉnh số câu hỏi dễ từ %d xuống %d ...\n", client->num_hard, hard_count);
         client->num_hard = hard_count;
     }
 
@@ -185,20 +135,16 @@ int set_questions_practice(ClientDataPractice* client) {
 void filter_questions(Question* filtered_questions, int* filtered_count, int difficulty, const char* subjects) {
     *filtered_count = 0;
     
-    // Vòng lặp qua tất cả câu hỏi
-    for (int i = 0; i < num_questions; i++) {
-        // Lọc theo độ khó
-        if (all_questions[i].difficulty != difficulty) continue;
+    for (int i = 0; i < num_questions; i++) {  
+        if (questions[i].difficulty != difficulty) continue;  
 
-        // Lọc theo môn học
-        if (strstr(subjects, "All") || strstr(subjects, all_questions[i].subject)) {
-                filtered_questions[*filtered_count] = all_questions[i];
-                (*filtered_count)++;
+        if (strstr(subjects, "All") || strstr(subjects, questions[i].subject)) {
+            filtered_questions[*filtered_count] = questions[i];
+            (*filtered_count)++;
         }
     }
-    // In thông báo số câu hỏi lọc được cho client
-    //printf("Client %d: Filtered %d questions\n", client_socket, *filtered_count);
 }
+
 // Xử lý câu trả lời của client trong chế độ thực hành
 void handel_answer_practice(ClientDataPractice* client, const char* answer) {
     if (client == NULL) {

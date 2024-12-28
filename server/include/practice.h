@@ -4,10 +4,6 @@
 #include "../include/exam.h"
 #include "../include/server.h"
 
-// Khai báo mảng câu hỏi và biến số lượng câu hỏi
-extern Question all_questions[MAX_QUESTIONS];
-extern int num_all_question;
-void load_all_questions(void);
 int set_questions_practice(ClientDataPractice* client);
 void filter_questions(Question* filtered_questions, int* filtered_count, int difficulty, const char* subjects);
 void handle_practice_mode(ClientDataPractice* client);

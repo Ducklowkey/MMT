@@ -14,11 +14,11 @@ int num_questions = 0;
 void load_questions(void) {
     FILE* file = fopen("questions.txt", "r");
     if (!file) {
-        perror("Cannot open questions file");
+        perror("Không thể mở file câu hỏi");
         return;
     }
 
-    printf("\nStarting to load questions...\n");
+    printf("\nBắt đầu load câu hỏi...\n");
     
     char line[BUFFER_SIZE];
     while (num_questions < MAX_QUESTIONS && fgets(line, BUFFER_SIZE, file)) {
@@ -38,21 +38,15 @@ void load_questions(void) {
         strncpy(q->subject, start, sizeof(q->subject) - 1);
         q->subject[sizeof(q->subject) - 1] = '\0';
 
-        // Read difficulty
+        //Đọc thông tin câu hỏi 
+
         if (!fgets(line, BUFFER_SIZE, file)) break;
         q->difficulty = atoi(line);
 
-        // Print debug info
-        printf("Loading Question %d:\n", num_questions + 1);
-        printf("  Subject: '%s'\n", q->subject);
-        printf("  Difficulty: %d\n", q->difficulty);
-
-        // Read question text
         if (!fgets(line, BUFFER_SIZE, file)) break;
         line[strcspn(line, "\n")] = 0;
         strncpy(q->question, line, sizeof(q->question) - 1);
 
-        // Read options
         if (!fgets(line, BUFFER_SIZE, file)) break;
         line[strcspn(line, "\n")] = 0;
         strncpy(q->option_A, line, sizeof(q->option_A) - 1);
@@ -69,23 +63,17 @@ void load_questions(void) {
         line[strcspn(line, "\n")] = 0;
         strncpy(q->option_D, line, sizeof(q->option_D) - 1);
 
-        // Read correct answer
         if (!fgets(line, BUFFER_SIZE, file)) break;
         q->correct_answer = line[0];
-
-        printf("  Question: %s\n", q->question);
-        printf("  Options: A) %s, B) %s, C) %s, D) %s\n", 
-               q->option_A, q->option_B, q->option_C, q->option_D);
-        printf("  Correct Answer: %c\n\n", q->correct_answer);
 
         num_questions++;
     }
 
     fclose(file);
-    printf("Successfully loaded %d questions\n", num_questions);
+    printf("Load thành công %d câu hỏi\n", num_questions);
 
     // In tổng kết theo subject và difficulty
-    printf("\nSummary of loaded questions:\n");
+    printf("\nHệ thống số câu hỏi đang có :\n");
     for (int d = 1; d <= 3; d++) {
         printf("Difficulty %d:\n", d);
         char *prev_subject = NULL;

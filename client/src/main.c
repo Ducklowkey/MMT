@@ -28,13 +28,12 @@ int main() {
 
     // Handle authentication first
     if (!handle_authentication(client)) {
-        printf("Authentication failed or user exited.\n");
         disconnect_from_server(client);
         free(client);
         return EXIT_FAILURE;
     }
 
-    printf("\nAuthentication successful!\n");
+    printf("\033[1;32mXác thực thành công \033[0m\n");
 
     // Main program loop
     handle_main_menu(client);

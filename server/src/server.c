@@ -1,6 +1,6 @@
 #include "../include/server.h"
 #include "../include/room.h"
-#include "../include/declarations.h"
+#include "../include/auth.h"
 #include "../include/exam.h"
 #include "../include/practice.h"
 #include <stdio.h>
@@ -12,8 +12,6 @@
 
 extern Question questions[MAX_QUESTIONS];  
 extern int num_questions; 
-
-#define MAX_FDS (MAX_CLIENTS + 1)  // +1 for server socket
 
 Server* create_server(void) {
     Server* server = malloc(sizeof(Server));
@@ -227,7 +225,6 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
     ClientInfo* client = &server->clients[client_index];
     char response[BUFFER_SIZE];
    
-    // Xóa newline ở cuối buffer
     buffer[strcspn(buffer, "\n")] = 0;
     printf("Received from client %d: '%s'\n", client->fd, buffer);
 

@@ -26,14 +26,14 @@ int connect_to_server(const char* address, int port) {
         return -1;
     }
 
-    printf("Connecting to server...\n");
+    printf("\033[1;32mĐang kết nối tới server \033[0m\n");
     if (connect(sock, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
         perror("Connection failed");
         close(sock);
         return -1;
     }
 
-    printf("Connected to server successfully!\n");
+    printf("\033[1;32mKết nối server thành công \033[0m\n");
     return sock;
 }
 
@@ -45,18 +45,15 @@ void disconnect_from_server(Client* client) {
 }
 
 int send_message(Client* client, const char* message) {
-    printf("Sending message: %s\n", message);
     ssize_t sent = send(client->socket, message, strlen(message), 0);
     if (sent < 0) {
         perror("Send failed");
         return -1;
     }
-    printf("Sent %zd bytes\n", sent);
     return sent;
 }
 
 int receive_message(Client* client, char* buffer) {
-    printf("Waiting for response...\n");
     memset(buffer, 0, BUFFER_SIZE);
     ssize_t received = recv(client->socket, buffer, BUFFER_SIZE - 1, 0);
     if (received < 0) {
@@ -64,16 +61,14 @@ int receive_message(Client* client, char* buffer) {
         return -1;
     }
     buffer[received] = '\0';
-    printf("Received %zd bytes: %s\n", received, buffer);
     return received;
 }
 
 void show_auth_menu() {
-    printf("\n=== Authentication ===\n");
-    printf("1. Register\n");
-    printf("2. Login\n");
-    printf("3. Exit\n");
-    printf("Choose an option (1-3): ");
+    printf("\n\033[1;34m===Đăng nhập - Đăng ký===\033[0m\n");
+    printf("1. Đăng ký\n");
+    printf("2. Đăng nhập\n");
+    printf("3. Thoát\n");
 }
 
 int handle_authentication(Client* client) {
@@ -82,61 +77,72 @@ int handle_authentication(Client* client) {
     char buffer[BUFFER_SIZE];
     char command[BUFFER_SIZE];
     int choice;
+    char input[256];
 
     while (1) {
         show_auth_menu();
-        if (scanf("%d", &choice) != 1) {
-            while (getchar() != '\n');
-            printf("Invalid input\n");
+        
+        // Đọc input dạng chuỗi
+        if (fgets(input, sizeof(input), stdin) == NULL) {
+            printf("\033[1;31mLỗi khi đọc input\033[0m\n");
             continue;
         }
-        while (getchar() != '\n');
+
+        // Xóa newline
+        input[strcspn(input, "\n")] = 0;
+
+        // Kiểm tra input chỉ là 1 ký tự và là 1, 2 hoặc 3
+        if (strlen(input) != 1 || input[0] < '1' || input[0] > '3') {
+            printf("\033[1;31mLựa chọn không hợp lệ. Hãy chọn (1-3)\033[0m\n");
+            continue;
+        }
+
+        choice = input[0] - '0';
 
         if (choice == 3) {
-            printf("Exiting...\n");
+            printf("\033[1;34mTiến hành đăng xuất...\033[0m\n");
             return 0;
         }
 
-        printf("Enter username: ");
+        printf("\033[1;34mTài khoản: \033[0m");
         if (!fgets(username, sizeof(username), stdin)) continue;
         username[strcspn(username, "\n")] = 0;
 
-        printf("Enter password: ");
+        printf("\033[1;34mMật khẩu: \033[0m");
         if (!fgets(password, sizeof(password), stdin)) continue;
         password[strcspn(password, "\n")] = 0;
 
         // Create command
         memset(command, 0, BUFFER_SIZE);
-        snprintf(command, BUFFER_SIZE, "%s %s %s",
-                choice == 1 ? "REGISTER" : "LOGIN",
-                username, password);
+        snprintf(command, BUFFER_SIZE, "%s %s %s", 
+                choice == 1 ? "REGISTER" : "LOGIN", username, password);
 
-        printf("Sending command: %s\n", command);
         if (send_message(client, command) < 0) {
-            printf("Failed to send command\n");
+            printf("\033[1;31mGửi thông điệp thất bại\033[0m\n");
             continue;
         }
 
-        printf("Waiting for server response...\n");
+        printf("\033[1;34mChờ phản hồi từ server...\033[0m\n");
         memset(buffer, 0, BUFFER_SIZE);
         int received = receive_message(client, buffer);
         if (received <= 0) {
-            printf("No response from server\n");
+            printf("\033[1;31mServer không phản hồi\033[0m\n");
             continue;
         }
-
-        printf("Server response: %s", buffer);
 
         // If login successful
         if (choice == 2 && strstr(buffer, "success") != NULL) {
             client->is_authenticated = 1;
             strncpy(client->username, username, MAX_USERNAME - 1);
-            printf("Login successful!\n");
+            printf("\n\033[1;32mĐăng nhập thành công!\033[0m\n");
             return 1;
         }
         // If registration successful
         else if (choice == 1 && strstr(buffer, "success") != NULL) {
-            printf("Registration successful! Please login.\n");
+            printf("\033[1;32mĐăng ký thành công!\033[0m\n");
+        }
+        else {
+            printf("\033[1;31mTài khoản không tồn tại, hoặc sai mật khẩu. Hãy thử lại!\033[0m\n");
         }
     }
 }

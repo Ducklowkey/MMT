@@ -56,7 +56,7 @@ typedef struct {
     int num_questions;
     int question_ids[MAX_QUESTIONS];
     int status;
-    int difficulty;     // Added difficulty level
+    int difficulty;     
     time_t start_time;
 } ExamRoom;
 
