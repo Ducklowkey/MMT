@@ -124,13 +124,23 @@ void start_server(Server* server) {
     printf("Server starting... waiting for connections\n");
 
     while (server->running) {
-        int poll_count = poll(server->pfds, server->fd_count, -1);
+        int poll_count = poll(server->pfds, server->fd_count, 1000); //Timeout 1 giây
 
         if (poll_count < 0) {
-            if (errno == EINTR) continue;
+            if (errno == EINTR) {  // Kiểm tra nếu bị ngắt bởi signal
+                printf("Poll interrupted by signal\n");
+                break;  // Thoát khỏi vòng lặp
+            }
             perror("Poll error");
             break;
         }
+
+        // Kiểm tra nếu server đã được yêu cầu dừng
+        if (!server->running) {
+            printf("Server shutdown requested\n");
+            break;
+        }
+
 
         for (int i = 0; i < server->fd_count; i++) {
             if (server->pfds[i].revents & POLLIN) {
@@ -279,8 +289,8 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
     // ===== ROOM MANAGEMENT =====
     // Tạo room mới
     if (strncmp(buffer, "CREATE_ROOM", 11) == 0) {
-    char* room_name = buffer + 12;
-    if (strlen(room_name) > 0) {
+        char* room_name = buffer + 12;
+        if (strlen(room_name) > 0) {
         int room_id = create_exam_room(room_name, client->username);
         if (room_id > 0) {
             client->current_room_id = room_id;
@@ -289,9 +299,9 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
             snprintf(response, BUFFER_SIZE, "CREATE_FAILED\n");
         }
         send(client->fd, response, strlen(response), 0);
+        }
+        return;
     }
-    return;
-}
 
     // Liệt kê rooms
     if (strcmp(buffer, "LIST_ROOMS") == 0) {
@@ -362,7 +372,7 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
             send(client->fd, "You are not in any room\n", 
             strlen("You are not in any room\n"), 0);
         }
-    return;
+        return;
     }
 
     // ===== OTHER FUNCTIONS =====
