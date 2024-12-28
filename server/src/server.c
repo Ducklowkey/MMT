@@ -213,8 +213,9 @@ void handle_new_connection(Server* server) {
 void handle_disconnection(Server* server, int client_index) {
     ClientInfo* client = &server->clients[client_index];
 
-    if (client->current_room_id != -1) {
-        leave_exam_room(client->current_room_id, client->username, client);
+    if (client->client_practice) {
+        cleanup_practice_session(client->client_practice);
+        client->client_practice = NULL;
     }
 
     printf("Client disconnected from socket %d\n", client->fd);
@@ -249,6 +250,17 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
         int i = 13;
         while (buffer[i] == ' ') i++;
         answer = buffer[i];
+
+        ExamRoom* room = get_room(client->current_room_id);
+        if (!room) {
+            send(client->fd, "Not in an exam room\n", strlen("Not in an exam room\n"), 0);
+            return;
+        }
+
+        if (!is_exam_time_remaining(room)) {
+            handle_exam_submit(client);
+            return;
+        }
         
         if (answer >= 'a' && answer <= 'd') answer = answer - 'a' + 'A';
         
@@ -396,29 +408,47 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
     }
 
 
-    if (strncmp(buffer, "START_PRACTICE ",15) == 0) {
+    if (strncmp(buffer, "START_PRACTICE ", 15) == 0) {
         printf("Processing START_PRACTICE for client %d...\n", client->fd);
-            int num_questions, time_limit, num_easy, num_medium, num_hard;
-             char subjects[256];
-        // printf("%s\n", buffer);
-            // Phân tích cấu hình
-            if (sscanf(buffer, "START_PRACTICE %d,%d,%d,%d,%d,%255[^\n]",
-                    &num_questions, &time_limit, &num_easy, &num_medium, &num_hard, subjects) == 6) {
-                send(client->fd, "PRACTICE_ACCEPT\n", 30, 0);
-                client->client_practice = create_client_data_practice(client->fd, num_questions, time_limit, num_easy, num_medium, num_hard, subjects);
-                //printf("Client practice: %p\n", client_practice);
-                if (set_questions_practice(client->client_practice) == -1) {
-                    printf("Failed to send practice question.\n");
-                    return;
-                }
-                if (client->client_practice){ 
-                    client->client_practice->start_time = time(NULL);
-                   // printf("Readable time: %s", ctime(&current_time)); 
-                    send_practice_question(client->client_practice, 0); // câu hỏi đầu tiên
-                }
-            } else {
-                printf("Failed to parse practice config.\n");
+        int num_questions, time_limit, num_easy, num_medium, num_hard;
+        char subjects[256];
+
+        // Phân tích cấu hình
+        if (sscanf(buffer, "START_PRACTICE %d,%d,%d,%d,%d,%255[^\n]", &num_questions, &time_limit, &num_easy, &num_medium, &num_hard, subjects) == 6) {
+            // Kiểm tra các giá trị
+            if (num_questions <= 0 || num_questions > MAX_PRACTICE_QUESTIONS) {
+                const char* error_msg = "Invalid number of questions\n";
+                send(client->fd, error_msg, strlen(error_msg), 0);
+                return;
             }
+
+            // Gửi xác nhận
+            send(client->fd, "PRACTICE_ACCEPT\n", 16, 0);
+
+            // Tạo client_practice mới
+            client->client_practice = create_client_data_practice(
+            client->fd, num_questions, time_limit, 
+            num_easy, num_medium, num_hard, subjects);
+
+            if (!client->client_practice) {
+                const char* error_msg = "Failed to initialize practice session\n";
+                send(client->fd, error_msg, strlen(error_msg), 0);
+                return;
+            }
+
+            if (set_questions_practice(client->client_practice) == -1) {
+                const char* error_msg = "Failed to set practice questions\n";
+                send(client->fd, error_msg, strlen(error_msg), 0);
+                free(client->client_practice);
+                client->client_practice = NULL;
+                return;
+            }
+
+            send_practice_question(client->client_practice, 0);
+        }else {
+            printf("Failed to parse practice config.\n");
+        }
+        return;
     }
     
 
@@ -466,5 +496,38 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
             send(client->fd, error_msg, strlen(error_msg), 0);
         }
     }
+
+    if (strcmp(buffer, "TIME") == 0) {
+        if (client->current_room_id != -1) {
+            ExamRoom* room = get_room(client->current_room_id);
+            if (room && room->status == 1) { // Đang thi
+                send_time_remaining(client);
+            }
+        }
+        return;
+    }
+
+    if (strcmp(buffer, "SUBMIT") == 0) {
+        if (client->current_room_id != -1) {
+            ExamRoom* room = get_room(client->current_room_id);
+            if (room && room->status == 1) { // Đang thi
+                handle_exam_submit(client);
+            }
+        }
+        return;
+    }
 }
 
+void cleanup_practice_session(ClientDataPractice* practice) {
+    if (!practice) return;
+
+    // Giải phóng bộ nhớ của các câu hỏi
+    for (int i = 0; i < MAX_PRACTICE_QUESTIONS; i++) {
+        if (practice->questions_practice[i]) {
+            free(practice->questions_practice[i]);
+        }
+    }
+
+    // Giải phóng cấu trúc
+    free(practice);
+}

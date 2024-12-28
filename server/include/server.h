@@ -23,5 +23,6 @@ void start_server(Server* server);
 void handle_client_message(Server* server, int client_index, char* buffer);
 void handle_new_connection(Server* server);
 void handle_disconnection(Server* server, int client_index);
+void cleanup_practice_session(ClientDataPractice* practice);
 
 #endif // SERVER_H

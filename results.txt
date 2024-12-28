@@ -6,3 +6,7 @@ User: Duc, Room ID: 1, Score/Total: 3/10, Execution Time: 28-12-2024 14:22:54
 User: Khang, Room ID: 2, Score/Total: 2/10, Execution Time: 28-12-2024 14:23:33
 User: Khang, Room ID: 2, Score/Total: 1/10, Execution Time: 28-12-2024 15:22:24
 User: Duc, Room ID: 3, Score/Total: 7/10, Execution Time: 28-12-2024 15:23:21
+User: Duc, Room ID: 1, Score/Total: 3/10, Execution Time: 28-12-2024 18:20:33
+User: Duc, Room ID: 1, Score/Total: 4/10, Execution Time: 28-12-2024 18:33:11
+User: Khang, Room ID: 2, Score/Total: 1/10, Execution Time: 28-12-2024 18:34:15
+User: Duc, Room ID: 1, Score/Total: 0/10, Execution Time: 28-12-2024 18:52:58

@@ -59,41 +59,54 @@ void load_all_question(void) {
     fclose(file);
     printf("Loaded %d questions\n", num_all_question);
 }
+
+
 ClientDataPractice* create_client_data_practice(int socket, int num_questions, int time_limit, int num_easy, int num_medium, int num_hard, const char* subjects) {
-    // Kiểm tra số lượng câu hỏi không vượt quá giới hạn
-    if (num_questions > MAX_QUESTIONS) {
-        fprintf(stderr, "Số lượng câu hỏi vượt quá giới hạn.\n");
+    // Kiểm tra các tham số đầu vào
+    if (num_questions <= 0 || num_questions > MAX_PRACTICE_QUESTIONS) {
+        fprintf(stderr, "Số lượng câu hỏi không hợp lệ: %d\n", num_questions);
         return NULL;
     }
 
-    // Cấp phát bộ nhớ cho ClientDataPractice
+    // Cấp phát bộ nhớ cho cấu trúc
     ClientDataPractice* client = (ClientDataPractice*)malloc(sizeof(ClientDataPractice));
     if (client == NULL) {
-        perror("Không thể cấp phát bộ nhớ");
+        perror("Không thể cấp phát bộ nhớ cho ClientDataPractice");
         return NULL;
     }
 
-    // Khởi tạo các giá trị trong cấu trúc
+    // Khởi tạo các giá trị
+    memset(client, 0, sizeof(ClientDataPractice));
+
     client->socket = socket;
-    client->current_question = 0; // Câu hỏi bắt đầu từ 1
+    client->current_question = 0;
     client->num_questions = num_questions;
-    client->time_limit = time_limit*60; // Đổi phút thành giây
+    client->time_limit = time_limit * 60;
     client->num_easy = num_easy;
     client->num_medium = num_medium;
     client->num_hard = num_hard;
-    client->start_time = time(NULL); // Gán thời gian bắt đầu là thời điểm hiện tại
-    client->score = 0; // Điểm ban đầu là 0
+    client->start_time = time(NULL);
+    client->score = 0;
+    
+    // Xử lý chuỗi môn học
+    if (subjects != NULL) {
+        strncpy(client->subjects_practice, subjects, sizeof(client->subjects_practice) - 1);
+        client->subjects_practice[sizeof(client->subjects_practice) - 1] = '\0';
+    } else {
+        client->subjects_practice[0] = '\0';
+    }
 
-    // Sao chép chuỗi môn học
-    strncpy(client->subjects_practice, subjects, sizeof(client->subjects_practice) - 1);
-    client->subjects_practice[sizeof(client->subjects_practice) - 1] = '\0'; // Đảm bảo chuỗi kết thúc bằng '\0'
-
-    // Khởi tạo câu trả lời và mảng câu hỏi thực hành
+    // Khởi tạo mảng câu trả lời
     memset(client->answers_practice, 0, sizeof(client->answers_practice));
-    for (int i = 0; i < MAX_QUESTIONS; i++) {
+
+    // Khởi tạo mảng con trỏ câu hỏi
+    for (int i = 0; i < MAX_PRACTICE_QUESTIONS; i++) {
         client->questions_practice[i] = NULL;
     }
+
+    return client;
 }
+
 int set_questions_practice(ClientDataPractice* client) {
     Question easy_questions[MAX_QUESTIONS], medium_questions[MAX_QUESTIONS], hard_questions[MAX_QUESTIONS];
     int easy_count, medium_count, hard_count;

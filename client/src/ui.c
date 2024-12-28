@@ -37,6 +37,7 @@ void print_room_menu(int is_creator, int exam_completed) {
     } else {
         printf("1. Leave Room\n");
         if (!exam_completed) {
+            printf("Rule : SUBMIT to early Submit , TIME to know how much time left\n");
             printf("\nWaiting for exam to start...\n");
         }
     }

@@ -269,3 +269,48 @@ void get_available_subjects(char* subjects_list, size_t size) {
         free(subjects[i]);
     }
 }
+
+// Kiểm tra thời gian còn lại
+int is_exam_time_remaining(ExamRoom* room) {
+    if (!room) return 0;
+    time_t current_time = time(NULL);
+    // Mặc định cho 1 tiếng thi
+    return (current_time - room->start_time) < 3600;
+}
+
+// Gửi thời gian còn lại
+void send_time_remaining(ClientInfo* client) {
+    ExamRoom* room = get_room(client->current_room_id);
+    if (!room) return;
+
+    time_t current_time = time(NULL);
+    int time_left = 3600 - (current_time - room->start_time);
+    if (time_left < 0) time_left = 0;
+
+    char time_message[BUFFER_SIZE];
+    snprintf(time_message, sizeof(time_message), "TIME_LEFT: %d seconds\n", time_left);
+    send(client->fd, time_message, strlen(time_message), 0);
+}
+
+// Xử lý nộp bài sớm và tính điểm
+void handle_exam_submit(ClientInfo* client) {
+    ExamRoom* room = get_room(client->current_room_id);
+    if (!room) return;
+
+    // Tính điểm
+    int score = client->score;
+    int total_questions = room->num_questions;
+
+    // Gửi kết quả
+    char result_message[BUFFER_SIZE];
+    snprintf(result_message, sizeof(result_message), 
+             "Exam completed! Your final score: %d/%d\n",
+             score, total_questions);
+    send(client->fd, result_message, strlen(result_message), 0);
+
+    // Lưu kết quả
+    save_exam_result(client->username, room->room_id, score, total_questions);
+
+    // Reset trạng thái client
+    client->current_question = -1;
+}
