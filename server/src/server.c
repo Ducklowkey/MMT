@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 
@@ -211,262 +212,173 @@ void handle_disconnection(Server* server, int client_index) {
 }
 
 void handle_client_message(Server* server, int client_index, char* buffer) {
-   ClientInfo* client = &server->clients[client_index];
-   char response[BUFFER_SIZE];
-
-   // Xóa newline ở cuối buffer nếu có
-   buffer[strcspn(buffer, "\n")] = 0;
-   printf("Received from client %d: '%s'\n", client->fd, buffer);
-
-   if (!client->authenticated) {
-       if (strncmp(buffer, "REGISTER", 8) == 0 ||
-           strncmp(buffer, "LOGIN", 5) == 0) {
-           printf("Processing authentication: %s\n", buffer);
-           handle_authentication(client, buffer);
-       }
-       return;
-   }
-
-   printf("Command from user %s: '%s'\n", client->username, buffer);
-
-   // Xử lý SUBMIT_ANSWER đầu tiên
-   if (strncmp(buffer, "SUBMIT_ANSWER", 13) == 0) {
-       printf("Processing answer submission from %s\n", client->username);
-       // Lấy câu trả lời, bỏ qua khoảng trắng sau SUBMIT_ANSWER
-       char answer = '\0';
-       int i = 13;
-       while (buffer[i] == ' ') i++; // Skip spaces
-       answer = buffer[i];
-       
-       if (answer >= 'a' && answer <= 'd') answer = answer - 'a' + 'A';
-       
-       if (answer >= 'A' && answer <= 'D') {
-           printf("Valid answer received: %c\n", answer);
-           handle_answer(client, answer);
-       } else {
-           printf("Invalid answer received: %c\n", answer);
-           snprintf(response, BUFFER_SIZE, "Invalid answer. Please enter A, B, C, or D\n");
-           send(client->fd, response, strlen(response), 0);
-       }
-       return;
-   }
+    ClientInfo* client = &server->clients[client_index];
+    char response[BUFFER_SIZE];
    
-   // Xử lý START_EXAM
-   if (strcmp(buffer, "START_EXAM") == 0) {
-       if (client->current_room_id != -1) {
-           ExamRoom* room = get_room(client->current_room_id);
-           if (room) {
-               if (is_room_creator(client->current_room_id, client->username)) {
-                   if (room->status == 0) {
-                       start_exam(server, room);
-                   } else {
-                       snprintf(response, BUFFER_SIZE, "Exam already in progress\n");
-                       send(client->fd, response, strlen(response), 0);
-                   }
-               } else {
-                   snprintf(response, BUFFER_SIZE, "Only room creator can start exam\n");
-                   send(client->fd, response, strlen(response), 0);
-               }
-           } else {
-               snprintf(response, BUFFER_SIZE, "Room not found\n");
-               send(client->fd, response, strlen(response), 0);
-           }
-       } else {
-           snprintf(response, BUFFER_SIZE, "You are not in any room\n");
-           send(client->fd, response, strlen(response), 0);
-       }
-       return;
-   }
+    // Xóa newline ở cuối buffer
+    buffer[strcspn(buffer, "\n")] = 0;
+    printf("Received from client %d: '%s'\n", client->fd, buffer);
 
-   if (strncmp(buffer, "CREATE_ROOM", 11) == 0) {
-    char* room_name = buffer + 12;
-    if (strlen(room_name) > 0) {
-        int room_id = create_exam_room(room_name, client->username);
-        if (room_id > 0) {
-            client->current_room_id = room_id;
-            snprintf(response, BUFFER_SIZE, "ROOM_CREATED %d\n", room_id);
-        } else {
-            snprintf(response, BUFFER_SIZE, "CREATE_FAILED\n");
+    // Xử lý authentication
+    if (!client->authenticated) {
+        if (strncmp(buffer, "REGISTER", 8) == 0 || strncmp(buffer, "LOGIN", 5) == 0) {
+            printf("Processing authentication: %s\n", buffer);
+            handle_authentication(client, buffer);
         }
-        send(client->fd, response, strlen(response), 0);
+        return;
     }
-}
-   else if (strcmp(buffer, "LIST_ROOMS") == 0) {
-       get_room_list(response);
-       send(client->fd, response, strlen(response), 0);
-   }
-   else if (strncmp(buffer, "JOIN_ROOM", 9) == 0) {
-       int room_id = atoi(buffer + 10);
-       int result = join_exam_room(room_id, client->username, client);
-       if (result == 0) {
-           snprintf(response, BUFFER_SIZE, "Joined room successfully\n");
-       } else {
-           snprintf(response, BUFFER_SIZE, "Failed to join room\n");
-       }
-       send(client->fd, response, strlen(response), 0);
-   }
-   else if (strcmp(buffer, "LEAVE_ROOM") == 0) {
-       if (client->current_room_id != -1) {
-           leave_exam_room(client->current_room_id, client->username, client);
-           snprintf(response, BUFFER_SIZE, "Left room successfully\n");
-       } else {
-           snprintf(response, BUFFER_SIZE, "You are not in any room\n");
-       }
-       send(client->fd, response, strlen(response), 0);
-   }
-   else if (strcmp(buffer, "DELETE_ROOM") == 0) {
-    if (client->current_room_id != -1) {
-        if (is_room_creator(client->current_room_id, client->username)) {
-            // Lưu lại id phòng cần xóa
-            int room_to_delete = client->current_room_id;
-            
-            // Thông báo cho tất cả user trong phòng (trừ người xóa)
-            for (int i = 0; i < MAX_CLIENTS; i++) {
-                ClientInfo* other_client = &server->clients[i];
-                if (other_client->active && 
-                    other_client->current_room_id == room_to_delete &&
-                    other_client->fd != client->fd) {
-                    char msg[] = "Room has been deleted by creator\n";
-                    send(other_client->fd, msg, strlen(msg), 0);
-                    other_client->current_room_id = -1;
+
+    printf("Command from user %s: '%s'\n", client->username, buffer);
+
+    // ===== EXAM ROOM MODE =====
+    // Trả lời câu hỏi trong room
+    if (strncmp(buffer, "SUBMIT_ANSWER", 13) == 0) {
+        printf("Processing exam answer from %s\n", client->username);
+        char answer = '\0';
+        int i = 13;
+        while (buffer[i] == ' ') i++;
+        answer = buffer[i];
+        
+        if (answer >= 'a' && answer <= 'd') answer = answer - 'a' + 'A';
+        
+        if (answer >= 'A' && answer <= 'D') {
+            printf("Valid exam answer received: %c\n", answer);
+            handle_answer(client, answer);
+        } else {
+            printf("Invalid exam answer received: %c\n", answer);
+            snprintf(response, BUFFER_SIZE, "Invalid answer. Please enter A, B, C, or D\n");
+            send(client->fd, response, strlen(response), 0);
+        }
+        return;
+    }
+
+    // Bắt đầu thi trong room
+    if (strcmp(buffer, "START_EXAM") == 0) {
+        if (client->current_room_id != -1) {
+            ExamRoom* room = get_room(client->current_room_id);
+            if (room) {
+                if (is_room_creator(client->current_room_id, client->username)) {
+                    if (room->status == 0) {
+                        start_exam(server, room);
+                    } else {
+                        send(client->fd, "Exam already in progress\n", strlen("Exam already in progress\n"), 0);
+                    }
+                } else {
+                    send(client->fd, "Only room creator can start exam\n", strlen("Only room creator can start exam\n"), 0);
                 }
+            } else {
+                send(client->fd, "Room not found\n", strlen("Room not found\n"), 0);
             }
-            
-            // Xóa phòng
-            delete_exam_room(room_to_delete, server->clients);
-            
-            // Trả response riêng cho người xóa
-            snprintf(response, BUFFER_SIZE, "ROOM_DELETED\n");
-            client->current_room_id = -1;
         } else {
-            snprintf(response, BUFFER_SIZE, "Only room creator can delete room\n");
+            send(client->fd, "You are not in any room\n", strlen("You are not in any room\n"), 0);
         }
-    } else {
-        snprintf(response, BUFFER_SIZE, "You are not in any room\n");
+        return;
     }
-    send(client->fd, response, strlen(response), 0);
-}
-   else if (strcmp(buffer, "LOGOUT") == 0) {
-       if (client->current_room_id != -1) {
-           leave_exam_room(client->current_room_id, client->username, client);
-       }
-       
-       // Reset client state
-       memset(client->username, 0, MAX_USERNAME);
-       memset(client->session_id, 0, sizeof(client->session_id));
-       client->authenticated = 0;
-       client->session_start = 0;
-       client->current_room_id = -1;
-       client->current_question = -1;
-       client->score = 0;
 
-       // Gửi thông báo thành công cho client
-       snprintf(response, BUFFER_SIZE, "Logged out successfully\n");
-       send(client->fd, response, strlen(response), 0);
-       
-       printf("User logged out: fd=%d\n", client->fd);
-   }
-   else if (strncmp(buffer, "ADD_QUESTION", 11) == 0) {
-    char *data = buffer + 12; // Skip "ADD_QUESTION "
-    char subject[50], question[200], opt_a[100], opt_b[100], opt_c[100], opt_d[100];
-    int difficulty;
-    char correct_answer;
+    // ===== ROOM MANAGEMENT =====
+    // Tạo room mới
+    if (strncmp(buffer, "CREATE_ROOM", 11) == 0) {
+        char* room_name = buffer + 12;
+        if (strlen(room_name) > 0) {
+            int room_id = create_exam_room(room_name, client->username);
+            if (room_id > 0) {
+                client->current_room_id = room_id;
+                snprintf(response, BUFFER_SIZE, "ROOM_CREATED %d\n", room_id);
+            } else {
+                snprintf(response, BUFFER_SIZE, "CREATE_FAILED\n");
+            }
+            send(client->fd, response, strlen(response), 0);
+        }
+        return;
+    }
 
-    // Parse dữ liệu
-    if (sscanf(data, "%[^|]|%d|%[^|]|%[^|]|%[^|]|%[^|]|%[^|]|%c",
-               subject, &difficulty, question, opt_a, opt_b, opt_c, opt_d, &correct_answer) == 8) {
+    // Liệt kê rooms
+    if (strcmp(buffer, "LIST_ROOMS") == 0) {
+        get_room_list(response);
+        send(client->fd, response, strlen(response), 0);
+        return;
+    }
+
+    // Tham gia room
+    if (strncmp(buffer, "JOIN_ROOM", 9) == 0) {
+        int room_id = atoi(buffer + 10);
+        int result = join_exam_room(room_id, client->username, client);
+        if (result == 0) {
+            send(client->fd, "Joined room successfully\n", strlen("Joined room successfully\n"), 0);
+        } else {
+            send(client->fd, "Failed to join room\n", strlen("Failed to join room\n"), 0);
+        }
+        return;
+    }
+
+    // Rời room
+    if (strcmp(buffer, "LEAVE_ROOM") == 0) {
+        if (client->current_room_id != -1) {
+            leave_exam_room(client->current_room_id, client->username, client);
+            send(client->fd, "Left room successfully\n", strlen("Left room successfully\n"), 0);
+        } else {
+            send(client->fd, "You are not in any room\n", strlen("You are not in any room\n"), 0);
+        }
+        return;
+    }
+
+    // Xóa room
+    if (strcmp(buffer, "DELETE_ROOM") == 0) {
+        if (client->current_room_id != -1) {
+            if (is_room_creator(client->current_room_id, client->username)) {
+                int room_to_delete = client->current_room_id;
+                
+                // Thông báo cho các user khác trong room
+                for (int i = 0; i < MAX_CLIENTS; i++) {
+                    ClientInfo* other = &server->clients[i];
+                    if (other->active && other->current_room_id == room_to_delete && other->fd != client->fd) {
+                        send(other->fd, "Room has been deleted by creator\n", 
+                             strlen("Room has been deleted by creator\n"), 0);
+                        other->current_room_id = -1;
+                    }
+                }
+                
+                delete_exam_room(room_to_delete, server->clients);
+                client->current_room_id = -1;
+                send(client->fd, "ROOM_DELETED\n", strlen("ROOM_DELETED\n"), 0);
+            } else {
+                send(client->fd, "Only room creator can delete room\n", 
+                     strlen("Only room creator can delete room\n"), 0);
+            }
+        } else {
+            send(client->fd, "You are not in any room\n", strlen("You are not in any room\n"), 0);
+        }
+        return;
+    }
+
+    // ===== OTHER FUNCTIONS =====
+    // Đăng xuất
+    if (strcmp(buffer, "LOGOUT") == 0) {
+        if (client->current_room_id != -1) {
+            leave_exam_room(client->current_room_id, client->username, client);
+        }
         
-        // Ghi vào file
-        FILE* file = fopen("questions.txt", "a");
-        if (file) {
-            fprintf(file, "%s\n%d\n%s\n%s\n%s\n%s\n%s\n%c\n",
-                    subject, difficulty, question, opt_a, opt_b, opt_c, opt_d, correct_answer);
-            fclose(file);
-            
-            snprintf(response, BUFFER_SIZE, "Question added successfully\n");
-        } else {
-            snprintf(response, BUFFER_SIZE, "Failed to add question\n");
-        }
-    } else {
-        snprintf(response, BUFFER_SIZE, "Invalid question format\n");
+        memset(client->username, 0, MAX_USERNAME);
+        memset(client->session_id, 0, sizeof(client->session_id));
+        client->authenticated = 0;
+        client->session_start = 0;
+        client->current_room_id = -1;
+        client->current_question = -1;
+        client->score = 0;
+
+        send(client->fd, "Logged out successfully\n", strlen("Logged out successfully\n"), 0);
+        printf("User logged out: fd=%d\n", client->fd);
+        return;
     }
+
+    // Nhận môn học 
+    if (strcmp(buffer, "GET_SUBJECTS") == 0) {
+        char subjects_list[BUFFER_SIZE - 10];  // Để lại space cho "SUBJECTS|" và "\n"
+        get_available_subjects(subjects_list, sizeof(subjects_list));
     
-    send(client->fd, response, strlen(response), 0);
-}
-    else if (strncmp(buffer, "START_TRAINING", 14) == 0) {
-    printf("Processing training request: %s\n", buffer);
-    char* params = strchr(buffer, '|');
-    if (params) {
-        params++; // Skip separator
-        handle_training(client, params);
-    } else {
-        printf("Invalid training format\n");
-        char response[] = "Invalid training format\n";
+        char response[BUFFER_SIZE];
+        snprintf(response, BUFFER_SIZE, "SUBJECTS|%s\n", subjects_list);
         send(client->fd, response, strlen(response), 0);
     }
 }
-}
 
-void handle_training(ClientInfo* client, const char* params) {
-    int num_questions_requested, time_limit, difficulty;
-    char subject[50];
-
-    // Parse parameters
-    if (sscanf(params, "%d|%d|%d|%[^\n]", 
-               &num_questions_requested, &time_limit, &difficulty, subject) != 4) {
-        printf("Parse error: num_q=%d, time=%d, diff=%d, subject=%s\n",
-               num_questions_requested, time_limit, difficulty, subject);
-        send(client->fd, "Invalid format\n", strlen("Invalid format\n"), 0);
-        return;
-    }
-
-    printf("Training request: subject='%s', difficulty=%d, total questions in bank=%d\n", 
-           subject, difficulty, num_questions);  // num_questions là biến global từ exam.h
-    
-    int matched_indices[MAX_QUESTIONS];
-    int matched_count = 0;;
-
-    // Tìm trong toàn bộ ngân hàng câu hỏi
-    for (int i = 0; i < num_questions; i++) {  // num_questions thay vì total_questions
-        if (questions[i].difficulty == difficulty && 
-            strcasecmp(questions[i].subject, subject) == 0) {
-            printf("Found matching question: id=%d, subject='%s', difficulty=%d\n",
-                   i, questions[i].subject, questions[i].difficulty);
-            matched_indices[matched_count++] = i;
-        }
-    }
-
-    printf("Total matching questions found: %d\n", matched_count);
-
-    if (matched_count < num_questions_requested) {
-        char msg[BUFFER_SIZE];
-        snprintf(msg, BUFFER_SIZE, 
-                "Not enough questions available (only %d %s questions with difficulty %d)\n",
-                matched_count, subject, difficulty);
-        send(client->fd, msg, strlen(msg), 0);
-        return;
-    }
-
-    // Sau khi đã tìm đủ câu hỏi phù hợp
-    if (matched_count >= num_questions_requested) {
-        // Lưu trạng thái training cho client
-        client->current_question = 0;
-        client->score = 0;
-        client->num_questions = num_questions_requested;  // Quan trọng: Lưu số câu hỏi được yêu cầu
-        
-        // Lưu các câu hỏi được chọn
-        memcpy(client->question_ids, matched_indices, 
-               num_questions_requested * sizeof(int));  // Chỉ copy số câu hỏi được yêu cầu
-
-        // Gửi câu hỏi đầu tiên
-        Question* q = &questions[matched_indices[0]];
-        char buffer[BUFFER_SIZE];
-        snprintf(buffer, BUFFER_SIZE,
-                "Question 1/%d\n%s\nA) %s\nB) %s\nC) %s\nD) %s\n",
-                num_questions_requested,  // Sử dụng số câu hỏi được yêu cầu
-                q->question,
-                q->option_A, q->option_B, q->option_C, q->option_D);
-
-        send(client->fd, buffer, strlen(buffer), 0);
-    }
-}

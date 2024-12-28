@@ -14,10 +14,8 @@ void print_banner(void) {
 void print_main_menu(void) {
     printf("\n=== Main Menu ===\n");
     printf("1. Create Exam Room\n");
-    printf("2. Join Exam Room\n");
-    printf("3. Training Mode\n");  
-    printf("4. Add New Question\n");
-    printf("5. Logout\n");
+    printf("2. Join Exam Room\n");  
+    printf("3. Logout\n");
 }
 
 void print_room_menu(int is_creator) {
@@ -30,13 +28,6 @@ void print_room_menu(int is_creator) {
         printf("1. Leave Room\n");
         printf("\nWaiting for exam to start...\n");
     }
-    printf("\nChoose an option: ");
-}
-
-void print_training_menu(void) {
-    printf("\n=== Training Mode ===\n");
-    printf("1. Start Training\n");
-    printf("2. Back to Main Menu\n");
     printf("\nChoose an option: ");
 }
 
@@ -246,15 +237,7 @@ void handle_main_menu(Client* client) {
                 break;
             }
             
-            case 3: // Training Mode
-            handle_training_menu(client);
-                break;
-
-            case 4: // Add question
-                handle_add_question(client);
-                break;
-
-            case 5: // Logout
+            case 3: // 
                 if (send_message(client, "LOGOUT") >= 0) {
                     receive_message(client, buffer); // Đợi phản hồi từ server
                     print_success("Logged out successfully");
@@ -269,169 +252,4 @@ void handle_main_menu(Client* client) {
     }
 }
 
-void handle_add_question(Client* client) {
-    char subject[50];
-    int difficulty;
-    char question[200];
-    char option_a[100];
-    char option_b[100];
-    char option_c[100];
-    char option_d[100];
-    char correct_answer;
-    char buffer[BUFFER_SIZE];
-    char command[BUFFER_SIZE];
 
-    clear_screen();
-    print_add_question_menu();
-
-    // Nhập thông tin câu hỏi như cũ...
-    printf("Subject (e.g., Math, Geography, History, Literature): ");
-    fgets(subject, sizeof(subject), stdin);
-    subject[strcspn(subject, "\n")] = 0;
-
-    do {
-        printf("Difficulty (1-3): ");
-        fgets(buffer, sizeof(buffer), stdin);
-    } while (sscanf(buffer, "%d", &difficulty) != 1 || difficulty < 1 || difficulty > 3);
-
-    printf("Question: ");
-    fgets(question, sizeof(question), stdin);
-    question[strcspn(question, "\n")] = 0;
-
-    printf("Option A: ");
-    fgets(option_a, sizeof(option_a), stdin);
-    option_a[strcspn(option_a, "\n")] = 0;
-
-    printf("Option B: ");
-    fgets(option_b, sizeof(option_b), stdin);
-    option_b[strcspn(option_b, "\n")] = 0;
-
-    printf("Option C: ");
-    fgets(option_c, sizeof(option_c), stdin);
-    option_c[strcspn(option_c, "\n")] = 0;
-
-    printf("Option D: ");
-    fgets(option_d, sizeof(option_d), stdin);
-    option_d[strcspn(option_d, "\n")] = 0;
-
-    do {
-        printf("Correct answer (A/B/C/D): ");
-        fgets(buffer, sizeof(buffer), stdin);
-        correct_answer = toupper(buffer[0]);
-    } while (correct_answer != 'A' && correct_answer != 'B' && 
-             correct_answer != 'C' && correct_answer != 'D');
-
-    // Tạo command để gửi đến server
-    snprintf(command, BUFFER_SIZE, "ADD_QUESTION %s|%d|%s|%s|%s|%s|%s|%c",
-             subject, difficulty, question, option_a, option_b, option_c, option_d, correct_answer);
-
-    // Gửi đến server
-    if (send_message(client, command) > 0) {
-        // Nhận phản hồi từ server
-        if (receive_message(client, buffer) > 0) {
-            if (strstr(buffer, "success") != NULL) {
-                print_success("Question added successfully!");
-            } else {
-                print_error(buffer);
-            }
-        }
-    } else {
-        print_error("Failed to send command to server");
-    }
-}
-
-void print_add_question_menu(void) {
-    printf("\n=== Add New Question ===\n");
-    printf("Please enter the following information:\n");
-}
-
-void handle_training_setup(Client* client) {
-    char buffer[BUFFER_SIZE];
-    int num_questions, time_limit, difficulty;
-    char subject[50];
-
-    printf("\n=== Training Setup ===\n");
-    
-    // Get number of questions
-    do {
-        printf("Enter number of questions (1-20): ");
-    } while (scanf("%d", &num_questions) != 1 || num_questions < 1 || num_questions > 20);
-    while(getchar() != '\n');
-
-    // Get time limit
-    do {
-        printf("Enter time limit in minutes (5-60): ");
-    } while (scanf("%d", &time_limit) != 1 || time_limit < 5 || time_limit > 60);
-    while(getchar() != '\n');
-
-    // Get subject
-    printf("Available subjects: Math, Geography, History, Literature\n");
-    printf("Enter subject: ");
-    fgets(subject, sizeof(subject), stdin);
-    subject[strcspn(subject, "\n")] = 0;
-
-    // Get difficulty
-    do {
-        printf("Enter difficulty (1-3): ");
-    } while (scanf("%d", &difficulty) != 1 || difficulty < 1 || difficulty > 3);
-    while(getchar() != '\n');
-
-    // Send training request
-    char cmd[BUFFER_SIZE];
-    snprintf(cmd, BUFFER_SIZE, "START_TRAINING|%d|%d|%d|%s", 
-             num_questions, time_limit, difficulty, subject);
-    
-    printf("Sending training request: %s\n", cmd);
-    if (send_message(client, cmd) < 0) {
-        print_error("Failed to start training");
-        return;
-    }
-
-    // Nhận phản hồi từ server
-    if (receive_message(client, buffer) > 0) {
-        if (strstr(buffer, "Training ready") != NULL) {
-            // Start training session
-            handle_exam(client);  // Reuse exam handler
-
-            // After training completed, ask for continuation
-            printf("\nDo you want to continue training? (Y/N): ");
-            char choice;
-            scanf(" %c", &choice);
-            while(getchar() != '\n');
-
-            if (toupper(choice) == 'Y') {
-                handle_training_setup(client);
-            }
-        } else {
-            print_error(buffer);  // In lỗi nếu server trả về lỗi
-        }
-    } else {
-        print_error("Lost connection to server");
-    }
-}
-
-void handle_training_menu(Client* client) {
-    int choice;
-    while (1) {
-        print_training_menu();
-        
-        if (scanf("%d", &choice) != 1) {
-            while (getchar() != '\n');
-            print_error("Invalid input");
-            continue;
-        }
-        while (getchar() != '\n');
-
-        switch (choice) {
-            case 1: // Start Training
-                handle_training_setup(client);
-                break;
-
-            case 2: // Back to Main Menu
-                return;
-
-            default:
-                print_error("Invalid option");
-        }
-    }
-}

@@ -1,9 +1,7 @@
 #ifndef ROOM_H
 #define ROOM_H
 
-#include "../../common/include/types.h"
-#include "../../common/include/constants.h"
-#include <sys/socket.h>
+#include "server.h"
 
 // Room management function prototypes
 int create_exam_room(const char* room_name, const char* creator);

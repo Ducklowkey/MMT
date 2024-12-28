@@ -3,7 +3,6 @@
 #define CLIENT_EXAM_H
 
 #include "client.h"
-#include <unistd.h>
 
 void handle_exam(Client* client);
 void submit_answer(Client* client, char answer);

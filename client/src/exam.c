@@ -46,8 +46,7 @@ void handle_exam(Client* client) {
                 fflush(stdout);
                 current_answer = '\0';  // Reset đáp án
             }
-            else if (strstr(buffer, "Exam completed") != NULL ||
-                     strstr(buffer, "Training completed") != NULL) {
+            else if (strstr(buffer, "Exam completed") != NULL) {
                 printf("\n%s", buffer);
                 exam_completed = 1;
                 break;

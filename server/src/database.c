@@ -11,9 +11,18 @@ void save_exam_result(const char* username, int room_id, int score, int total) {
         return;
     }
 
-    // Ghi theo định dạng: username,room_id,score,total,timestamp
-    fprintf(file, "%s,%d,%d,%d,%ld\n",
-            username, room_id, score, total, time(NULL));
+    // Lấy thời gian hiện tại
+    time_t rawtime;
+    struct tm *timeinfo;
+    char time_buffer[80];
+
+    time(&rawtime);
+    timeinfo = localtime(&rawtime);
+    strftime(time_buffer, sizeof(time_buffer), "%d-%m-%Y %H:%M:%S", timeinfo);
+
+    // Ghi theo định dạng: User: Duc, Room: 1, Score: 10/10, Time: 20-12-2023 15:30:45
+    fprintf(file, "User: %s, Room ID: %d, Score/Total: %d/%d, Execution Time: %s\n",
+            username, room_id, score, total, time_buffer);
 
     fclose(file);
     printf("Saved exam result for user %s\n", username);

@@ -1,7 +1,7 @@
 #ifndef DATABASE_H
 #define DATABASE_H
 
-#include "../../common/include/types.h"
+#include "server.h"
 
 // Ghi kết quả thi vào file results.txt , định dạng: username,room_id,score,total,timestamp
 void save_exam_result(const char* username, int room_id, int score, int total);

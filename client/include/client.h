@@ -4,14 +4,7 @@
 
 #include "../../common/include/constants.h"
 #include "../../common/include/protocol.h"
-
-typedef struct {
-    int socket;
-    char username[MAX_USERNAME];
-    int is_authenticated;
-    int current_room;
-    int is_room_creator;
-} Client;
+#include "../../common/include/types.h"
 
 // Connection functions
 int connect_to_server(const char* address, int port);

@@ -1,7 +1,7 @@
 #ifndef DECLARATIONS_H
 #define DECLARATIONS_H
 
-#include "../../common/include/types.h"
+#include "server.h"
 
 // Authentication functions
 void handle_authentication(ClientInfo* client, const char* command);

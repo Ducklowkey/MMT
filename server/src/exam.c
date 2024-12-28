@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -17,17 +18,34 @@ void load_questions(void) {
         return;
     }
 
+    printf("\nStarting to load questions...\n");
+    
     char line[BUFFER_SIZE];
     while (num_questions < MAX_QUESTIONS && fgets(line, BUFFER_SIZE, file)) {
         Question* q = &questions[num_questions];
         
-        // Read subject
+        // Read subject - xử lý khoảng trắng
         line[strcspn(line, "\n")] = 0;
-        strncpy(q->subject, line, sizeof(q->subject) - 1);
+        // Bỏ qua dòng trống
+        if(strlen(line) == 0) continue;
+        
+        // Xóa khoảng trắng đầu cuối của subject
+        char *start = line;
+        while(*start && isspace(*start)) start++;
+        char *end = start + strlen(start) - 1;
+        while(end > start && isspace(*end)) *end-- = '\0';
+        
+        strncpy(q->subject, start, sizeof(q->subject) - 1);
+        q->subject[sizeof(q->subject) - 1] = '\0';
 
         // Read difficulty
         if (!fgets(line, BUFFER_SIZE, file)) break;
         q->difficulty = atoi(line);
+
+        // Print debug info
+        printf("Loading Question %d:\n", num_questions + 1);
+        printf("  Subject: '%s'\n", q->subject);
+        printf("  Difficulty: %d\n", q->difficulty);
 
         // Read question text
         if (!fgets(line, BUFFER_SIZE, file)) break;
@@ -55,11 +73,36 @@ void load_questions(void) {
         if (!fgets(line, BUFFER_SIZE, file)) break;
         q->correct_answer = line[0];
 
+        printf("  Question: %s\n", q->question);
+        printf("  Options: A) %s, B) %s, C) %s, D) %s\n", 
+               q->option_A, q->option_B, q->option_C, q->option_D);
+        printf("  Correct Answer: %c\n\n", q->correct_answer);
+
         num_questions++;
     }
 
     fclose(file);
-    printf("Loaded %d questions\n", num_questions);
+    printf("Successfully loaded %d questions\n", num_questions);
+
+    // In tổng kết theo subject và difficulty
+    printf("\nSummary of loaded questions:\n");
+    for (int d = 1; d <= 3; d++) {
+        printf("Difficulty %d:\n", d);
+        char *prev_subject = NULL;
+        int count = 0;
+        for (int i = 0; i < num_questions; i++) {
+            if (questions[i].difficulty == d) {
+                if (!prev_subject || strcmp(prev_subject, questions[i].subject) != 0) {
+                    if (count > 0) printf("  %s: %d questions\n", prev_subject, count);
+                    prev_subject = questions[i].subject;
+                    count = 1;
+                } else {
+                    count++;
+                }
+            }
+        }
+        if (prev_subject && count > 0) printf("  %s: %d questions\n", prev_subject, count);
+    }
 }
 
 void send_question(ClientInfo* client, int question_number) {
@@ -167,74 +210,74 @@ void start_exam(Server* server, ExamRoom* room) {
 
 void handle_answer(ClientInfo* client, char answer) {
     ExamRoom* room = get_room(client->current_room_id);
+    
     if (!room) {
-        // Chế độ training
-        printf("Processing training answer '%c' from client %d (question %d)\n", 
-               answer, client->fd, client->current_question + 1);
-
-        // Kiểm tra đáp án và tăng điểm
-        if (answer == questions[client->question_ids[client->current_question]].correct_answer) {
-            client->score++;
-            char feedback[BUFFER_SIZE];
-            snprintf(feedback, BUFFER_SIZE, "Correct answer!\n");
-            send(client->fd, feedback, strlen(feedback), 0);
-        } else {
-            char feedback[BUFFER_SIZE];
-            snprintf(feedback, BUFFER_SIZE, "Wrong answer. The correct answer was %c\n", 
-                    questions[client->question_ids[client->current_question]].correct_answer);
-            send(client->fd, feedback, strlen(feedback), 0);
-        }
-
-        // Chuyển sang câu hỏi tiếp theo
-        client->current_question++;
-
-        // Nếu còn câu hỏi thì gửi câu tiếp theo
-        if (client->current_question < client->num_questions) {
-            send_question(client, client->current_question);
-        } else {
-            // Kết thúc training
-            char buffer[BUFFER_SIZE];
-            snprintf(buffer, BUFFER_SIZE, "Training completed! Your final score: %d/%d\n",
-                    client->score, client->num_questions);
-            send(client->fd, buffer, strlen(buffer), 0);
-
-            // Reset client state
-            client->current_question = -1;
-            printf("Client %d completed training with score %d/%d\n", 
-                   client->fd, client->score, client->num_questions);
-        }
-        return;
+        return;  // Invalid room, do nothing
     }
 
-    // Chế độ exam room - giữ nguyên code cũ
     printf("Processing exam answer '%c' from client %d (question %d)\n", 
            answer, client->fd, client->current_question + 1);
 
-    // Kiểm tra đáp án và tăng điểm
     if (answer == questions[room->question_ids[client->current_question]].correct_answer) {
         client->score++;
     }
 
-    // Chuyển sang câu hỏi tiếp theo
     client->current_question++;
 
-    // Nếu còn câu hỏi thì gửi câu tiếp theo
     if (client->current_question < room->num_questions) {
         send_question(client, client->current_question);
     } else {
-        // Kết thúc bài thi
         char buffer[BUFFER_SIZE];
         snprintf(buffer, BUFFER_SIZE, "Exam completed! Your final score: %d/%d\n",
                 client->score, room->num_questions);
         send(client->fd, buffer, strlen(buffer), 0);
 
-        // Reset client state
         client->current_question = -1;
         printf("Client %d completed exam with score %d/%d\n", 
                client->fd, client->score, room->num_questions);
 
-        // Lưu kết quả vào file
         save_exam_result(client->username, room->room_id, 
                         client->score, room->num_questions);
+    }
+}
+
+void get_available_subjects(char* subjects_list, size_t size) {
+    // Đảm bảo có đủ size cho "SUBJECTS|" và "\n"
+    size_t remaining_size = size - 10;  // Trừ đi độ dài của "SUBJECTS|" và "\n"
+    
+    char* subjects[MAX_QUESTIONS];
+    int num_subjects = 0;
+
+    // Thu thập unique subjects
+    for (int i = 0; i < num_questions; i++) {
+        int found = 0;
+        for (int j = 0; j < num_subjects; j++) {
+            if (strcmp(subjects[j], questions[i].subject) == 0) {
+                found = 1;
+                break;
+            }
+        }
+        if (!found) {
+            subjects[num_subjects++] = questions[i].subject;
+        }
+    }
+
+    // Đóng gói thành chuỗi, kiểm tra size
+    subjects_list[0] = '\0';
+    size_t current_length = 0;
+    
+    for (int i = 0; i < num_subjects; i++) {
+        size_t subject_len = strlen(subjects[i]);
+        // +1 cho dấu phẩy hoặc null terminator
+        if (current_length + subject_len + 1 > remaining_size) {
+            break;  // Dừng nếu không đủ space
+        }
+
+        if (i > 0) {
+            strcat(subjects_list, ",");
+            current_length++;
+        }
+        strcat(subjects_list, subjects[i]);
+        current_length += subject_len;
     }
 }
