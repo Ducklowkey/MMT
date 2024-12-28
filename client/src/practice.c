@@ -2,9 +2,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <unistd.h> // Để dùng read và write
-#include <sys/socket.h>  // Dành cho Linux/Mac
-#include <arpa/inet.h>   // Dành cho Linux/Mac
+#include <unistd.h>
+#include <sys/socket.h>  
+#include <arpa/inet.h>  
 
 // Hàm cho phép người dùng lựa chọn thông số bài luyện tập
 void configure_practice(Client* client, int* num_questions_total, int* time_limit, int* num_easy, int* num_medium, int* num_hard, char* subjects) {

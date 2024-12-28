@@ -16,7 +16,7 @@
 #define SESSION_TIMEOUT 300  // 5 minutes in seconds
 
 // Exam settings
-#define MAX_QUESTIONS 100
+#define MAX_QUESTIONS 1000
 #define NUM_QUESTIONS_PER_EXAM 10
 #define EXAM_TIME_LIMIT 3600  // 1 hour in seconds
 
