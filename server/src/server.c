@@ -394,16 +394,16 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
             // Phân tích cấu hình
             if (sscanf(buffer, "START_PRACTICE %d,%d,%d,%d,%d,%255[^\n]",
                     &num_questions, &time_limit, &num_easy, &num_medium, &num_hard, subjects) == 6) {
-                send(client->fd, "PRACTICE_ACCEPT\n", 30, 0);
                 client->client_practice = create_client_data_practice(client->fd, num_questions, time_limit, num_easy, num_medium, num_hard, subjects);
                 //printf("Client practice: %p\n", client_practice);
                 if (set_questions_practice(client->client_practice) == -1) {
-                    printf("Failed to send practice question.\n");
+                    printf("Failed to set practice question.\n");
                     return;
                 }
                 if (client->client_practice){ 
                     client->client_practice->start_time = time(NULL);
                    // printf("Readable time: %s", ctime(&current_time)); 
+                    send(client->fd, "PRACTICE_ACCEPT\n", 30, 0);
                     send_practice_question(client->client_practice, 0); // câu hỏi đầu tiên
                 }
             } else {

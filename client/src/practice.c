@@ -119,7 +119,7 @@ void start_and_set_format(Client* client){
 }
 void handle_practice(Client* client) {
     char buffer[1024];
-    printf("Enter your answer (A/B/C/D or type 'SUBMIT' to quit or type 'TIME' to request time left): \n");
+    //printf("Enter your answer (A/B/C/D or type 'SUBMIT' to quit or type 'TIME' to request time left): \n");
     while (1) {
         // Nhận câu hỏi từ server
         memset(buffer, 0, sizeof(buffer)); // Xóa nội dung cũ của buffer
@@ -145,7 +145,7 @@ void handle_practice(Client* client) {
             return;
         }
         printf("%s\n", buffer);
-
+        printf("Enter your answer (A/B/C/D or type 'SUBMIT' to quit or type 'TIME' to request time left): \n");
         char answer[16];
         while (1) {
            // printf("Enter your answer (A/B/C/D or type 'SUBMIT' to quit or type 'TIME' to request time left): ");
