@@ -12,6 +12,9 @@ void get_available_subjects(char* subjects_list, size_t size);
 int is_exam_time_remaining(ExamRoom* room);
 void handle_exam_submit(ClientInfo* client);
 void send_time_remaining(ClientInfo* client);
+void show_review_menu(ClientInfo* client);
+void handle_review_request(ClientInfo* client, int question_num);
+void handle_change_answer(ClientInfo* client, int question_num, char new_answer);
 
 extern Question questions[MAX_QUESTIONS];
 extern int num_questions;

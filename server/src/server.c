@@ -542,6 +542,23 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
         }
         return;
     }
+    
+    if (strncmp(buffer, "REVIEW", 6) == 0) {
+        int question_num;
+        if (sscanf(buffer + 6, "%d", &question_num) == 1) {
+            handle_review_request(&server->clients[client_index], question_num);
+        }
+        return;
+    }
+
+    if (strncmp(buffer, "CHANGE", 6) == 0) {
+        int question_num;
+        char new_answer;
+        if (sscanf(buffer + 6, "%d %c", &question_num, &new_answer) == 2) {
+            handle_change_answer(&server->clients[client_index], question_num, new_answer);
+        }
+        return;
+    }
 }
 
 void cleanup_practice_session(ClientDataPractice* practice) {

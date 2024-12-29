@@ -290,13 +290,14 @@ void start_exam(Server* server, ExamRoom* room) {
 
 void handle_answer(ClientInfo* client, char answer) {
     ExamRoom* room = get_room(client->current_room_id);
-    
-    if (!room) {
-        return;  // Invalid room, do nothing
-    }
+    if (!room) return;
 
     printf("Processing exam answer '%c' from client %d (question %d)\n", 
            answer, client->fd, client->current_question + 1);
+
+    // Lưu câu trả lời
+    client->answers[client->current_question] = answer;
+    client->question_answered[client->current_question] = 1;
 
     if (answer == questions[room->question_ids[client->current_question]].correct_answer) {
         client->score++;
@@ -307,17 +308,7 @@ void handle_answer(ClientInfo* client, char answer) {
     if (client->current_question < room->num_questions) {
         send_question(client, client->current_question);
     } else {
-        char buffer[BUFFER_SIZE];
-        snprintf(buffer, BUFFER_SIZE, "Exam completed! Your final score: %d/%d\n",
-                client->score, room->num_questions);
-        send(client->fd, buffer, strlen(buffer), 0);
-
-        client->current_question = -1;
-        printf("Client %d completed exam with score %d/%d\n", 
-               client->fd, client->score, room->num_questions);
-
-        save_exam_result(client->username, room->room_id, 
-                        client->score, room->num_questions);
+        show_review_menu(client);  // Hiển thị menu xem lại
     }
 }
 
@@ -393,4 +384,88 @@ void handle_exam_submit(ClientInfo* client) {
 
     // Reset trạng thái client
     client->current_question = -1;
+}
+
+void show_review_menu(ClientInfo* client) {
+    char buffer[BUFFER_SIZE];
+    ExamRoom* room = get_room(client->current_room_id);
+    if (!room) return;
+
+    snprintf(buffer, BUFFER_SIZE, 
+            "\nDanh sách câu hỏi:\n"
+            "Sử dụng lệnh:\n"
+            "REVIEW <số câu hỏi>: để xem lại câu hỏi\n"
+            "CHANGE <số câu hỏi> <đáp án mới>: để thay đổi đáp án\n"
+            "SUBMIT: để nộp bài\n\n");
+    send(client->fd, buffer, strlen(buffer), 0);
+
+    // Hiển thị danh sách câu trả lời
+    for (int i = 0; i < room->num_questions; i++) {
+        Question* q = &questions[room->question_ids[i]];
+        snprintf(buffer, BUFFER_SIZE, 
+                "Câu %d: %s\nĐáp án đã chọn: %c\n\n",
+                i + 1, q->question, 
+                client->question_answered[i] ? client->answers[i] : '-');
+        send(client->fd, buffer, strlen(buffer), 0);
+    }
+}
+
+void handle_review_request(ClientInfo* client, int question_num) {
+    ExamRoom* room = get_room(client->current_room_id);
+    if (!room || question_num <= 0 || question_num > room->num_questions) {
+        send(client->fd, "Số câu hỏi không hợp lệ.\n", strlen("Số câu hỏi không hợp lệ.\n"), 0);
+        return;
+    }
+
+    Question* q = &questions[room->question_ids[question_num - 1]];
+    char buffer[BUFFER_SIZE];
+    snprintf(buffer, BUFFER_SIZE,
+             "\nCâu %d:\n%s\nA) %s\nB) %s\nC) %s\nD) %s\n"
+             "Đáp án đã chọn: %c\n",
+             question_num, q->question,
+             q->option_A, q->option_B, q->option_C, q->option_D,
+             client->question_answered[question_num - 1] ? client->answers[question_num - 1] : '-');
+    send(client->fd, buffer, strlen(buffer), 0);
+}
+
+void handle_change_answer(ClientInfo* client, int question_num, char new_answer) {
+    ExamRoom* room = get_room(client->current_room_id);
+    if (!room || question_num <= 0 || question_num > room->num_questions) {
+        send(client->fd, "Số câu hỏi không hợp lệ.\n", strlen("Số câu hỏi không hợp lệ.\n"), 0);
+        return;
+    }
+
+    // Kiểm tra đáp án mới hợp lệ
+    new_answer = toupper(new_answer);
+    if (new_answer < 'A' || new_answer > 'D') {
+        send(client->fd, "Đáp án không hợp lệ. Vui lòng chọn A, B, C hoặc D.\n", 
+             strlen("Đáp án không hợp lệ. Vui lòng chọn A, B, C hoặc D.\n"), 0);
+        return;
+    }
+
+    // Cập nhật điểm nếu thay đổi đáp án
+    int question_idx = question_num - 1;
+    if (client->question_answered[question_idx]) {
+        // Trừ điểm nếu đáp án cũ đúng
+        if (client->answers[question_idx] == questions[room->question_ids[question_idx]].correct_answer) {
+            client->score--;
+        }
+    }
+
+    // Cập nhật đáp án mới
+    client->answers[question_idx] = new_answer;
+    client->question_answered[question_idx] = 1;
+
+    // Cộng điểm nếu đáp án mới đúng
+    if (new_answer == questions[room->question_ids[question_idx]].correct_answer) {
+        client->score++;
+    }
+
+    char buffer[BUFFER_SIZE];
+    snprintf(buffer, BUFFER_SIZE, "Đã thay đổi đáp án câu %d thành %c.\n", 
+             question_num, new_answer);
+    send(client->fd, buffer, strlen(buffer), 0);
+
+    // Hiển thị lại menu xem lại
+    show_review_menu(client);
 }

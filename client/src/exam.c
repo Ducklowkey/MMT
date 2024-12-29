@@ -12,6 +12,7 @@ void handle_exam(Client* client) {
     fd_set readfds;
     int max_fd = client->socket;
     int exam_completed = 0;
+    char input[BUFFER_SIZE];  
 
     while (!exam_completed) {
         FD_ZERO(&readfds);
@@ -45,17 +46,23 @@ void handle_exam(Client* client) {
         }
 
         if (FD_ISSET(STDIN_FILENO, &readfds)) {
-            char input[10];
             if (fgets(input, sizeof(input), stdin)) {
-                input[strcspn(input, "\n")] = 0;
+                input[strcspn(input, "\n")] = 0;  // Xóa newline
 
-                if (strcmp(input, "TIME") == 0) {
+                // Xử lý các lệnh đặc biệt
+                if (strncmp(input, "REVIEW", 6) == 0) {
+                    send_message(client, input);  // Gửi lệnh REVIEW nguyên vẹn
+                }
+                else if (strncmp(input, "CHANGE", 6) == 0) {
+                    send_message(client, input);  // Gửi lệnh CHANGE nguyên vẹn
+                }
+                else if (strcmp(input, "TIME") == 0) {
                     send_message(client, "TIME");
                 }
                 else if (strcmp(input, "SUBMIT") == 0) {
                     send_message(client, "SUBMIT");
                 }
-                else if (strlen(input) == 1) {
+                else if (strlen(input) == 1) {  // Đáp án bình thường
                     char answer = input[0];
                     if (answer >= 'a' && answer <= 'd') answer -= 32;
                     if (answer >= 'A' && answer <= 'D') {
