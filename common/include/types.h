@@ -46,6 +46,7 @@ typedef struct { //Giúp server quản lý thông tin client
     ClientDataPractice* client_practice;    
     char answers[MAX_QUESTIONS];  // Mảng lưu đáp án đã chọn
     int question_answered[MAX_QUESTIONS];  // Đánh dấu câu hỏi đã trả lời
+    int in_review_mode;  // Flag đánh dấu đang trong chế độ xem lại
 } ClientInfo;
 
 typedef struct {

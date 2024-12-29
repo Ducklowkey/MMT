@@ -368,21 +368,17 @@ void handle_exam_submit(ClientInfo* client) {
     ExamRoom* room = get_room(client->current_room_id);
     if (!room) return;
 
-    // Tính điểm
     int score = client->score;
     int total_questions = room->num_questions;
 
-    // Gửi kết quả
     char result_message[BUFFER_SIZE];
     snprintf(result_message, sizeof(result_message), 
              "Exam completed! Your final score: %d/%d\n",
              score, total_questions);
     send(client->fd, result_message, strlen(result_message), 0);
-
-    // Lưu kết quả
-    save_exam_result(client->username, room->room_id, score, total_questions);
-
-    // Reset trạng thái client
+    
+    // Reset các trạng thái
+    client->in_review_mode = 0;
     client->current_question = -1;
 }
 
@@ -435,28 +431,17 @@ void handle_change_answer(ClientInfo* client, int question_num, char new_answer)
         return;
     }
 
-    // Kiểm tra đáp án mới hợp lệ
-    new_answer = toupper(new_answer);
-    if (new_answer < 'A' || new_answer > 'D') {
-        send(client->fd, "Đáp án không hợp lệ. Vui lòng chọn A, B, C hoặc D.\n", 
-             strlen("Đáp án không hợp lệ. Vui lòng chọn A, B, C hoặc D.\n"), 0);
-        return;
-    }
-
-    // Cập nhật điểm nếu thay đổi đáp án
+    // Cập nhật đáp án và điểm
     int question_idx = question_num - 1;
     if (client->question_answered[question_idx]) {
-        // Trừ điểm nếu đáp án cũ đúng
         if (client->answers[question_idx] == questions[room->question_ids[question_idx]].correct_answer) {
             client->score--;
         }
     }
 
-    // Cập nhật đáp án mới
     client->answers[question_idx] = new_answer;
     client->question_answered[question_idx] = 1;
 
-    // Cộng điểm nếu đáp án mới đúng
     if (new_answer == questions[room->question_ids[question_idx]].correct_answer) {
         client->score++;
     }
@@ -466,6 +451,10 @@ void handle_change_answer(ClientInfo* client, int question_num, char new_answer)
              question_num, new_answer);
     send(client->fd, buffer, strlen(buffer), 0);
 
-    // Hiển thị lại menu xem lại
+    // Thêm flag đánh dấu đang trong chế độ xem lại
+    client->in_review_mode = 1;
+    // Reset current_question về -1 để tránh xử lý như câu hỏi tiếp theo
+    client->current_question = -1;
+
     show_review_menu(client);
 }

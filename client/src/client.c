@@ -45,11 +45,13 @@ void disconnect_from_server(Client* client) {
 }
 
 int send_message(Client* client, const char* message) {
+    printf("Attempting to send message: '%s'\n", message);
     ssize_t sent = send(client->socket, message, strlen(message), 0);
     if (sent < 0) {
         perror("Send failed");
         return -1;
     }
+    printf("Successfully sent %zd bytes\n", sent);
     return sent;
 }
 
@@ -61,6 +63,7 @@ int receive_message(Client* client, char* buffer) {
         return -1;
     }
     buffer[received] = '\0';
+    printf("Received message: '%s'\n", buffer);
     return received;
 }
 

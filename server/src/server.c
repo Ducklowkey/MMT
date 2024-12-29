@@ -3,6 +3,7 @@
 #include "../include/auth.h"
 #include "../include/exam.h"
 #include "../include/practice.h"
+#include "../include/database.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -243,6 +244,14 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
     // Trả lời câu hỏi trong room
     if (strncmp(buffer, "SUBMIT_ANSWER", 13) == 0) {
         printf("Processing exam answer from %s\n", client->username);
+    
+        // Kiểm tra nếu đang trong chế độ xem lại
+        if (client->in_review_mode) {
+            char *msg = "Bạn đang trong chế độ xem lại. Hãy dùng lệnh SUBMIT để nộp bài.\n";
+            send(client->fd, msg, strlen(msg), 0);
+            return;
+        }
+
         char answer = '\0';
         int i = 13;
         while (buffer[i] == ' ') i++;
@@ -258,19 +267,26 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
             handle_exam_submit(client);
             return;
         }
-        
+
+        // Kiểm tra xem đã làm hết số câu chưa
+        if (client->current_question >= room->num_questions) {
+            char *msg = "Bạn đã làm hết các câu hỏi. Hãy dùng SUBMIT để nộp bài hoặc REVIEW/CHANGE để xem lại.\n";
+            send(client->fd, msg, strlen(msg), 0);
+            return;
+        }
+    
         if (answer >= 'a' && answer <= 'd') answer = answer - 'a' + 'A';
-        
+    
         if (answer >= 'A' && answer <= 'D') {
-            printf("Valid exam answer received: %c\n", answer);
-            handle_answer(client, answer);
+        printf("Valid exam answer received: %c\n", answer);
+        handle_answer(client, answer);
         } else {
             printf("Invalid exam answer received: %c\n", answer);
             snprintf(response, BUFFER_SIZE, "Invalid answer. Please enter A, B, C, or D\n");
             send(client->fd, response, strlen(response), 0);
         }
         return;
-    }
+    }   
 
     // Bắt đầu thi trong room
     if (strcmp(buffer, "START_EXAM") == 0) {
@@ -494,22 +510,42 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
         }
     }
 
+    // Xử lý lệnh SUBMIT
     if (strcmp(buffer, "TIME") == 0) {
-        if (client->current_room_id != -1) {
-            ExamRoom* room = get_room(client->current_room_id);
-            if (room && room->status == 1) { // Đang thi
-                send_time_remaining(client);
-            }
-        }
+        send_time_remaining(client);
         return;
     }
 
     if (strcmp(buffer, "SUBMIT") == 0) {
-        if (client->current_room_id != -1) {
-            ExamRoom* room = get_room(client->current_room_id);
-            if (room && room->status == 1) { // Đang thi
-                handle_exam_submit(client);
+        handle_exam_submit(client);
+        return;
+    }
+
+    // xử lý CHANGE 
+    if (strncmp(buffer, "CHANGE", 6) == 0) {
+        int question_num;
+        char new_answer;
+        if (sscanf(buffer + 6, "%d %c", &question_num, &new_answer) == 2) {
+            if (!client->in_review_mode) {
+                // Nếu chưa ở chế độ xem lại, chuyển sang chế độ xem lại
+                client->in_review_mode = 1;
+                client->current_question = -1;
             }
+            handle_change_answer(client, question_num, new_answer);
+        }
+        return;
+    }
+
+    // xử lý REVIEW 
+    if (strncmp(buffer, "REVIEW", 6) == 0) {
+        int question_num;
+        if (sscanf(buffer + 6, "%d", &question_num) == 1) {
+            if (!client->in_review_mode) {
+                // Nếu chưa ở chế độ xem lại, chuyển sang chế độ xem lại
+                client->in_review_mode = 1;
+                client->current_question = -1;
+            }
+            handle_review_request(client, question_num);
         }
         return;
     }
@@ -539,23 +575,6 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
             send(client->fd, "FORMAT_ACCEPTED\n", strlen("FORMAT_ACCEPTED\n"), 0);
         } else {
             send(client->fd, "FORMAT_ERROR\n", strlen("FORMAT_ERROR\n"), 0);
-        }
-        return;
-    }
-    
-    if (strncmp(buffer, "REVIEW", 6) == 0) {
-        int question_num;
-        if (sscanf(buffer + 6, "%d", &question_num) == 1) {
-            handle_review_request(&server->clients[client_index], question_num);
-        }
-        return;
-    }
-
-    if (strncmp(buffer, "CHANGE", 6) == 0) {
-        int question_num;
-        char new_answer;
-        if (sscanf(buffer + 6, "%d %c", &question_num, &new_answer) == 2) {
-            handle_change_answer(&server->clients[client_index], question_num, new_answer);
         }
         return;
     }
