@@ -513,6 +513,35 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
         }
         return;
     }
+
+    if (strncmp(buffer, "SET_EXAM_FORMAT", 14) == 0) {
+        ExamRoom* room = get_room(client->current_room_id);
+        if (!room || !is_room_creator(room->room_id, client->username)) {
+            send(client->fd, "NOT_AUTHORIZED\n", strlen("NOT_AUTHORIZED\n"), 0);
+            return;
+        }
+
+        int num_questions, time_limit, num_easy, num_medium, num_hard;
+        char subjects[256];
+
+        if (sscanf(buffer, "SET_EXAM_FORMAT %d,%d,%d,%d,%d,%[^\n]",
+                &num_questions, &time_limit, &num_easy, &num_medium, 
+                &num_hard, subjects) == 6) {
+
+            // Cập nhật thông tin cho room
+            room->num_questions = num_questions;
+            room->time_limit = time_limit * 60; // Chuyển sang giây
+            room->num_easy = num_easy;
+            room->num_medium = num_medium;
+            room->num_hard = num_hard;
+            strncpy(room->subjects, subjects, sizeof(room->subjects) - 1);
+
+            send(client->fd, "FORMAT_ACCEPTED\n", strlen("FORMAT_ACCEPTED\n"), 0);
+        } else {
+            send(client->fd, "FORMAT_ERROR\n", strlen("FORMAT_ERROR\n"), 0);
+        }
+        return;
+    }
 }
 
 void cleanup_practice_session(ClientDataPractice* practice) {

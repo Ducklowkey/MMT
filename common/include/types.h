@@ -58,6 +58,11 @@ typedef struct {
     int status;
     int difficulty;     
     time_t start_time;
+    int num_easy;           // Số câu hỏi dễ
+    int num_medium;         // Số câu hỏi trung bình
+    int num_hard;           // Số câu hỏi khó
+    char subjects[256];     // Các môn học đã chọn
+    int time_limit;         // Thời gian làm bài (phút)
 } ExamRoom;
 
 typedef struct {

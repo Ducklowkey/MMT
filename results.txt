@@ -11,3 +11,5 @@ User: Duc, Room ID: 1, Score/Total: 4/10, Execution Time: 28-12-2024 18:33:11
 User: Khang, Room ID: 2, Score/Total: 1/10, Execution Time: 28-12-2024 18:34:15
 User: Duc, Room ID: 1, Score/Total: 0/10, Execution Time: 28-12-2024 18:52:58
 User: Duc, Room ID: 1, Score/Total: 4/10, Execution Time: 29-12-2024 06:32:52
+User: Duc, Room ID: 1, Score/Total: 1/45, Execution Time: 29-12-2024 06:55:40
+User: Khang, Room ID: 2, Score/Total: 4/22, Execution Time: 29-12-2024 06:58:48

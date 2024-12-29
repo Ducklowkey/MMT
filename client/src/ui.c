@@ -200,12 +200,42 @@ void handle_room_menu(Client* client) {
             if (client->is_room_creator) {
                 switch (choice) {
                     case 1: // Start Exam
-                        if (!exam_completed) {  // Chỉ cho phép start nếu chưa thi
-                            if (send_message(client, "START_EXAM") >= 0) {
-                                // Chủ room không cần thêm xử lý
+                        if (!exam_completed) {
+                            // Cấu hình bài thi trước khi bắt đầu
+                            char subjects[256];
+                            int num_questions_total = 0, time_limit = 0;
+                            int num_easy = 0, num_medium = 0, num_hard = 0;
+
+                            // Dùng hàm configure_practice để cấu hình
+                            configure_practice(client, &num_questions_total, &time_limit, &num_easy, &num_medium, &num_hard, subjects);
+
+                            if (strlen(subjects) == 0) {
+                                printf("Đã hủy cấu hình bài thi.\n");
+                                continue;
+                            }
+
+                            // Gửi cấu hình cho server
+                            char config_cmd[BUFFER_SIZE];
+                            snprintf(config_cmd, BUFFER_SIZE, "SET_EXAM_FORMAT %d,%d,%d,%d,%d,%s", num_questions_total, time_limit, num_easy, num_medium, num_hard, subjects);
+
+                            if (send_message(client, config_cmd) < 0) {
+                                print_error("Không thể gửi cấu hình bài thi");
+                                continue;
+                            }
+
+                            // Nhận phản hồi từ server
+                            char buffer[BUFFER_SIZE];
+                            if (receive_message(client, buffer) > 0 && 
+                                strstr(buffer, "FORMAT_ACCEPTED") != NULL) {
+                                // Bắt đầu thi
+                                if (send_message(client, "START_EXAM") >= 0) {
+                                    print_success("Bài thi đã bắt đầu");
+                                }
+                            } else {
+                            print_error("Cấu hình bài thi không hợp lệ");
                             }
                         } else {
-                            print_error("Exam already completed");
+                            print_error("Bài thi đã kết thúc");
                         }
                         break;
 

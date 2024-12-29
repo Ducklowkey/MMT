@@ -148,18 +148,99 @@ void start_exam(Server* server, ExamRoom* room) {
     printf("Starting exam in room %d\n", room->room_id);
     room->status = 1;
     room->start_time = time(NULL);
-    room->num_questions = NUM_QUESTIONS_PER_EXAM;
     
-    // Random chọn câu hỏi
+    // Tạo mảng chỉ số cho từng độ khó
+    int easy_questions[MAX_QUESTIONS];
+    int medium_questions[MAX_QUESTIONS];
+    int hard_questions[MAX_QUESTIONS];
+    int easy_count = 0, medium_count = 0, hard_count = 0;
+    
+    // Lọc và phân loại câu hỏi theo môn học và độ khó
+    for (int i = 0; i < num_questions; i++) {
+        if (strstr(room->subjects, questions[i].subject) || strstr(room->subjects, "All")) {
+            switch (questions[i].difficulty) {
+                case 1: 
+                    easy_questions[easy_count++] = i;
+                    break;
+                case 2:
+                    medium_questions[medium_count++] = i;
+                    break;
+                case 3:
+                    hard_questions[hard_count++] = i;
+                    break;
+            }
+        }
+    }
+    
+    // Điều chỉnh số lượng câu hỏi nếu không đủ
+    char adjust_msg[BUFFER_SIZE];
+    if (room->num_easy > easy_count) {
+        snprintf(adjust_msg, BUFFER_SIZE, "Do không đủ số lượng câu hỏi, điều chỉnh số câu hỏi dễ từ %d xuống %d...\n",
+                room->num_easy, easy_count);
+        broadcast_to_room(server, room, adjust_msg);
+        room->num_easy = easy_count;
+    }
+    if (room->num_medium > medium_count) {
+        snprintf(adjust_msg, BUFFER_SIZE, "Do không đủ số lượng câu hỏi, điều chỉnh số câu hỏi trung bình từ %d xuống %d...\n",
+                room->num_medium, medium_count);
+        broadcast_to_room(server, room, adjust_msg);
+        room->num_medium = medium_count;
+    }
+    if (room->num_hard > hard_count) {
+        snprintf(adjust_msg, BUFFER_SIZE, "Do không đủ số lượng câu hỏi, điều chỉnh số câu hỏi khó từ %d xuống %d...\n",
+                room->num_hard, hard_count);
+        broadcast_to_room(server, room, adjust_msg);
+        room->num_hard = hard_count;
+    }
+
+    // Cập nhật tổng số câu hỏi
+    int total_available = room->num_easy + room->num_medium + room->num_hard;
+    if (total_available == 0) {
+        char error_msg[BUFFER_SIZE];
+        snprintf(error_msg, BUFFER_SIZE, "Không tìm thấy câu hỏi phù hợp với các tiêu chí đã chọn.\n");
+        broadcast_to_room(server, room, error_msg);
+        room->status = 0;
+        return;
+    }
+
+    room->num_questions = total_available;
+
+    // Chọn ngẫu nhiên câu hỏi và lưu vị trí thực tế
     srand(time(NULL));
-    for(int i = 0; i < room->num_questions; i++) {
-        room->question_ids[i] = rand() % num_questions;
+    int question_index = 0;
+
+    // Chọn câu hỏi dễ
+    for (int i = 0; i < room->num_easy; i++) {
+        int random_easy = rand() % easy_count;
+        room->question_ids[question_index++] = easy_questions[random_easy];
+    }
+
+    // Chọn câu hỏi trung bình
+    for (int i = 0; i < room->num_medium; i++) {
+        int random_medium = rand() % medium_count;
+        room->question_ids[question_index++] = medium_questions[random_medium];
+    }
+
+    // Chọn câu hỏi khó
+    for (int i = 0; i < room->num_hard; i++) {
+        int random_hard = rand() % hard_count;
+        room->question_ids[question_index++] = hard_questions[random_hard];
+    }
+
+    room->num_questions = question_index;  // Cập nhật tổng số câu hỏi
+
+    // Xáo trộn thứ tự câu hỏi
+    for (int i = room->num_questions - 1; i > 0; i--) {
+        int j = rand() % (i + 1);
+        int temp = room->question_ids[i];
+        room->question_ids[i] = room->question_ids[j];
+        room->question_ids[j] = temp;
     }
     
     // Gửi thông báo bắt đầu cho tất cả users trong room
     char start_msg[BUFFER_SIZE];
-    snprintf(start_msg, BUFFER_SIZE, "Exam has started! Total questions: %d\n", 
-            room->num_questions);
+    snprintf(start_msg, BUFFER_SIZE, "Exam has started! Total questions: %d (Easy: %d, Medium: %d, Hard: %d)\n", 
+            room->num_questions, room->num_easy, room->num_medium, room->num_hard);
 
     // Duyệt qua tất cả client trong room
     for (int j = 0; j < MAX_CLIENTS; j++) {
@@ -189,7 +270,18 @@ void start_exam(Server* server, ExamRoom* room) {
     for (int j = 0; j < MAX_CLIENTS; j++) {
         ClientInfo* client = &server->clients[j];
         if (client->active && strcmp(client->username, room->creator_username) == 0) {
-            char creator_msg[] = "Exam started successfully. Waiting for participants to complete.\n";
+            char creator_msg[BUFFER_SIZE];
+            snprintf(creator_msg, BUFFER_SIZE, 
+                    "Exam started successfully. Configuration:\n"
+                    "- Total questions: %d\n"
+                    "- Easy: %d\n"
+                    "- Medium: %d\n"
+                    "- Hard: %d\n"
+                    "- Time limit: %d minutes\n"
+                    "- Subjects: %s\n"
+                    "Waiting for participants to complete.\n",
+                    room->num_questions, room->num_easy, room->num_medium, 
+                    room->num_hard, room->time_limit/60, room->subjects);
             send(client->fd, creator_msg, strlen(creator_msg), 0);
             break;
         }
