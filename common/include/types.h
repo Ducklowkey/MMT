@@ -18,19 +18,18 @@ typedef struct {
 } Question;
 
 typedef struct {
-    int socket;                 // Socket của client
-    //char answers[MAX_QUESTIONS];   // Lưu câu trả lời của client
-    int current_question;          // Câu hỏi hiện tại
-    int num_questions;             // Số lượng câu hỏi
-    int time_limit;                // Thời gian giới hạn
-    int num_easy;                  // Số lượng câu dễ
-    int num_medium;              // Số lượng câu trung bình
-    int num_hard;                // Số lượng câu khó
-    time_t start_time;             // Thời gian bắt đầu
-    int score;                     // Điểm của client
-    char subjects_practice[256];            // Môn học
-    char answers_practice[256];             // Câu trả lời
-    Question* questions_practice[100];           // Mảng câu hỏi
+    int socket;    
+    int current_question;          
+    int num_questions;  // Số câu 
+    int time_limit;                
+    int num_easy;                  
+    int num_medium;              
+    int num_hard;                
+    time_t start_time;  
+    int score;                     
+    char subjects_practice[256];          
+    char answers_practice[256];  // Câu trả lời
+    Question* questions_practice[100];           
 } ClientDataPractice;
 
 typedef struct { //Giúp server quản lý thông tin client 
@@ -44,7 +43,7 @@ typedef struct { //Giúp server quản lý thông tin client
     int current_question;
     int score;
     ClientDataPractice* client_practice;    
-    char answers[MAX_QUESTIONS];  // Mảng lưu đáp án đã chọn
+    char answers[MAX_QUESTIONS];  // lưu đáp án đã chọn
     int question_answered[MAX_QUESTIONS];  // Đánh dấu câu hỏi đã trả lời
     int in_review_mode;  // Flag đánh dấu đang trong chế độ xem lại
 } ClientInfo;
@@ -61,11 +60,11 @@ typedef struct {
     int status;
     int difficulty;     
     time_t start_time;
-    int num_easy;           // Số câu hỏi dễ
-    int num_medium;         // Số câu hỏi trung bình
-    int num_hard;           // Số câu hỏi khó
-    char subjects[256];     // Các môn học đã chọn
-    int time_limit;         // Thời gian làm bài (phút)
+    int num_easy;           
+    int num_medium;         
+    int num_hard;           
+    char subjects[256];     
+    int time_limit;        
 } ExamRoom;
 
 typedef struct {

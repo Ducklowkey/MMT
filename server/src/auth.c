@@ -75,7 +75,7 @@ void handle_authentication(ClientInfo* client, const char* command) {
 int register_user(const char* username, const char* password) {
     printf("Attempting to register user: %s\n", username);
 
-    FILE* file = fopen("users.txt", "a+");
+    FILE* file = fopen(USERS_FILE, "a+");
     if (!file) {
         perror("Cannot open users file");
         return -1;
@@ -108,7 +108,7 @@ int register_user(const char* username, const char* password) {
 int login_user(const char* username, const char* password, char* session_id) {
     printf("Attempting login for user: %s\n", username);
 
-    FILE* file = fopen("users.txt", "r");
+    FILE* file = fopen(USERS_FILE, "r");
     if (!file) {
         perror("Cannot open users file");
         return -1;

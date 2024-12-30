@@ -148,7 +148,7 @@ void handle_room_menu(Client* client) {
     int exam_completed = 0;  // Thêm flag kiểm tra đã thi xong
 
     while (1) {
-        print_room_menu(client->is_room_creator, exam_completed);  // Thêm tham số exam_completed
+        print_room_menu(client->is_room_creator, exam_completed);  
         
         FD_ZERO(&readfds);
         FD_SET(STDIN_FILENO, &readfds);
@@ -161,7 +161,7 @@ void handle_room_menu(Client* client) {
             break;
         }
 
-        // Check for server messages
+        // Kiểm tra server res 
         if (FD_ISSET(client->socket, &readfds)) {
             int valread = receive_message(client, buffer);
             if (valread <= 0) {
@@ -169,25 +169,23 @@ void handle_room_menu(Client* client) {
                 return;
             }
 
-            // Nếu nhận được thông báo bắt đầu thi và không phải chủ room
             if (strstr(buffer, "Exam has started") != NULL && !client->is_room_creator) {
                 printf("\n%s", buffer);
                 handle_exam(client);  // Chuyển sang màn hình thi
-                exam_completed = 1;   // Set flag đã thi xong
-                continue;            // Quay lại menu room
+                exam_completed = 1;   
+                continue;            
             }
 
-            // Nếu nhận được thông báo kết thúc bài thi
             if (strstr(buffer, "Exam completed") != NULL) {
                 printf("\n%s", buffer);
-                exam_completed = 1;  // Set flag đã thi xong
-                continue;           // Quay lại menu room
+                exam_completed = 1;  
+                continue;           
             }
             
             printf("\n%s", buffer);
         }
 
-        // Check for user input 
+        // Kiểm tra client input 
         if (FD_ISSET(STDIN_FILENO, &readfds)) {
             int choice;
             if (scanf("%d", &choice) != 1) {
@@ -201,29 +199,26 @@ void handle_room_menu(Client* client) {
                 switch (choice) {
                     case 1: // Start Exam
                         if (!exam_completed) {
-                            // Cấu hình bài thi trước khi bắt đầu
                             char subjects[256];
                             int num_questions_total = 0, time_limit = 0;
                             int num_easy = 0, num_medium = 0, num_hard = 0;
 
-                            // Dùng hàm configure_practice để cấu hình
+                            //  cấu hình bài thi 
                             configure_practice(client, &num_questions_total, &time_limit, &num_easy, &num_medium, &num_hard, subjects);
 
                             if (strlen(subjects) == 0) {
                                 printf("Đã hủy cấu hình bài thi.\n");
                                 continue;
                             }
-
-                            // Gửi cấu hình cho server
+                            //client req
                             char config_cmd[BUFFER_SIZE];
                             snprintf(config_cmd, BUFFER_SIZE, "SET_EXAM_FORMAT %d,%d,%d,%d,%d,%s", num_questions_total, time_limit, num_easy, num_medium, num_hard, subjects);
-
                             if (send_message(client, config_cmd) < 0) {
                                 print_error("Không thể gửi cấu hình bài thi");
                                 continue;
                             }
 
-                            // Nhận phản hồi từ server
+                            //server res
                             char buffer[BUFFER_SIZE];
                             if (receive_message(client, buffer) > 0 && 
                                 strstr(buffer, "FORMAT_ACCEPTED") != NULL) {
@@ -289,7 +284,7 @@ void handle_main_menu(Client* client) {
         while (getchar() != '\n');
 
         switch (choice) {
-            case 1: { // Create Exam Room
+            case 1: { // Tạo phòng thi 
                 printf("Enter room name: ");
                 char room_name[BUFFER_SIZE];
                 char cmd[BUFFER_SIZE];
@@ -298,12 +293,12 @@ void handle_main_menu(Client* client) {
                     room_name[strcspn(room_name, "\n")] = 0;
                     
                     if (strlen(room_name) < 1) {
-                        print_error("Room name cannot be empty");
+                        print_error("Không để trống tên phòng");
                         continue;
                     }
 
                     memset(cmd, 0, BUFFER_SIZE);
-                    if (snprintf(cmd, BUFFER_SIZE, "CREATE_ROOM %s", room_name) >= BUFFER_SIZE) {
+                    if (snprintf(cmd, BUFFER_SIZE, "CREATE_ROOM %s", room_name) >= MAX_ROOMNAME) {
                         print_error("Room name too long");
                         continue;
                     }
@@ -323,7 +318,6 @@ void handle_main_menu(Client* client) {
                         continue;
                     }
 
-                    // Kiểm tra response bằng prefix rõ ràng
                     if (strncmp(response, "ROOM_CREATED", 11) == 0) {
                         int room_id;
                         if (sscanf(response + 12, "%d", &room_id) == 1) {

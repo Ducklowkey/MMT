@@ -12,7 +12,7 @@ Question questions[MAX_QUESTIONS];
 int num_questions = 0;
 
 void load_questions(void) {
-    FILE* file = fopen("questions.txt", "r");
+    FILE* file = fopen(QUESTIONS_FILE, "r");
     if (!file) {
         perror("Không thể mở file câu hỏi");
         return;
@@ -330,7 +330,7 @@ void get_available_subjects(char* subjects_list, size_t size) {
         }
     }
 
-    // Đóng gói thành chuỗi
+    // packing 
     subjects_list[0] = '\0';
     for (int i = 0; i < num_subjects; i++) {
         strcat(subjects_list, subjects[i]);
@@ -346,7 +346,7 @@ int is_exam_time_remaining(ExamRoom* room) {
     if (!room) return 0;
     time_t current_time = time(NULL);
     // Mặc định cho 1 tiếng thi
-    return (current_time - room->start_time) < 3600;
+    return (current_time - room->start_time) < EXAM_TIME_LIMIT;
 }
 
 // Gửi thời gian còn lại
@@ -372,9 +372,7 @@ void handle_exam_submit(ClientInfo* client) {
     int total_questions = room->num_questions;
 
     char result_message[BUFFER_SIZE];
-    snprintf(result_message, sizeof(result_message), 
-             "Exam completed! Your final score: %d/%d\n",
-             score, total_questions);
+    snprintf(result_message, sizeof(result_message), "Exam completed! Your final score: %d/%d\n", score, total_questions);
     send(client->fd, result_message, strlen(result_message), 0);
     
     save_exam_result(client->username, room->room_id, score, total_questions);

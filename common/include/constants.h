@@ -11,7 +11,7 @@
 // User limits
 #define MAX_USERNAME 100
 #define MAX_PASSWORD 100
-#define MAX_ROOMNAME 50
+#define MAX_ROOMNAME 100
 
 // Session settings
 #define SESSION_TIMEOUT 300  // 5 minutes in seconds
@@ -46,32 +46,16 @@
 #define ROOM_COMPLETED 2
 #define ROOM_REVIEWING 3   // Trạng thái phòng đang trong chế độ xem lại
 
-// Answer settings
-#define MAX_ANSWER_LENGTH 1
-#define VALID_ANSWERS "ABCD"
-
 // Review mode settings
 #define REVIEW_ENABLED 1
 #define REVIEW_DISABLED 0
 #define MAX_REVIEWS_PER_QUESTION 3  // Số lần được xem lại mỗi câu hỏi
 
 // Format settings
-#define MIN_QUESTIONS 10            // Số câu hỏi tối thiểu
+#define MIN_QUESTIONS 15            // Số câu hỏi tối thiểu
 #define MAX_QUESTIONS_PER_EXAM 60   // Số câu hỏi tối đa
-#define MIN_TIME_LIMIT 30           // Thời gian thi tối thiểu (phút)
-#define MAX_TIME_LIMIT 180          // Thời gian thi tối đa (phút)
-#define MAX_DIFFICULTY_RATIO 100    // Tỷ lệ độ khó tối đa (%)
-
-// Score settings
-#define SCORE_PER_EASY 1       // Điểm cho câu dễ
-#define SCORE_PER_MEDIUM 2     // Điểm cho câu trung bình
-#define SCORE_PER_HARD 3       // Điểm cho câu khó
-#define PENALTY_FOR_CHANGE 0.5  // Điểm trừ khi thay đổi đáp án
-
-// Timeout settings
-#define ANSWER_TIMEOUT 300     // Thời gian tối đa cho mỗi câu (giây)
-#define REVIEW_TIMEOUT 60      // Thời gian tối đa xem lại mỗi câu (giây)
-#define CHANGE_TIMEOUT 120     // Thời gian tối đa để thay đổi đáp án (giây)
+#define MIN_TIME_LIMIT 15          // Thời gian thi tối thiểu (phút)
+#define MAX_TIME_LIMIT 60         // Thời gian thi tối đa (phút)
 
 // Debug levels
 #define DEBUG_NONE 0

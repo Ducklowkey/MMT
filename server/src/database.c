@@ -5,7 +5,7 @@
 #include <time.h>
 
 void save_exam_result(const char* username, int room_id, int score, int total) {
-    FILE* file = fopen("results.txt", "a");
+    FILE* file = fopen(RESULTS_FILE, "a");
     if (!file) {
         printf("Error: Cannot open results file\n");
         return;
@@ -29,7 +29,7 @@ void save_exam_result(const char* username, int room_id, int score, int total) {
 }
 
 void get_user_results(const char* username) {
-    FILE* file = fopen("results.txt", "r");
+    FILE* file = fopen(RESULTS_FILE, "r");
     if (!file) {
         printf("No results found\n");
         return;

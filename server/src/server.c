@@ -229,7 +229,7 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
     buffer[strcspn(buffer, "\n")] = 0;
     printf("Received from client %d: '%s'\n", client->fd, buffer);
 
-    // Xử lý authentication
+    // Xử lý đăng nhập 
     if (!client->authenticated) {
         if (strncmp(buffer, "REGISTER", 8) == 0 || strncmp(buffer, "LOGIN", 5) == 0) {
             printf("Processing authentication: %s\n", buffer);
@@ -240,7 +240,6 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
 
     printf("Command from user %s: '%s'\n", client->username, buffer);
 
-    // ===== EXAM ROOM MODE =====
     // Trả lời câu hỏi trong room
     if (strncmp(buffer, "SUBMIT_ANSWER", 13) == 0) {
         printf("Processing exam answer from %s\n", client->username);
@@ -592,13 +591,11 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
 void cleanup_practice_session(ClientDataPractice* practice) {
     if (!practice) return;
 
-    // Giải phóng bộ nhớ của các câu hỏi
     for (int i = 0; i < MAX_PRACTICE_QUESTIONS; i++) {
         if (practice->questions_practice[i]) {
             free(practice->questions_practice[i]);
         }
     }
 
-    // Giải phóng cấu trúc
     free(practice);
 }
