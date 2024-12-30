@@ -4,6 +4,8 @@
 
 #include "client.h"
 #include "exam.h"
+#include "practice.h"
+#include <stdio.h>
 #include <unistd.h>
 
 void print_banner(void);

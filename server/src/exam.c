@@ -316,8 +316,15 @@ void get_available_subjects(char* subjects_list, size_t size) {
     char* subjects[MAX_QUESTIONS];
     int num_subjects = 0;
 
-    // Thu thập subjects từ questions
+    // Duyệt qua tất cả câu hỏi
     for (int i = 0; i < num_questions; i++) {
+        // Kiểm tra subject có hợp lệ không
+        if (questions[i].subject == NULL || strlen(questions[i].subject) == 0) {
+            fprintf(stderr, "Warning: Invalid subject at question %d\n", i);
+            continue;
+        }
+
+        // Kiểm tra subject đã tồn tại trong danh sách chưa
         int found = 0;
         for (int j = 0; j < num_subjects; j++) {
             if (strcmp(subjects[j], questions[i].subject) == 0) {
@@ -325,14 +332,30 @@ void get_available_subjects(char* subjects_list, size_t size) {
                 break;
             }
         }
+
+        // Nếu chưa tồn tại, thêm vào danh sách
         if (!found) {
-            subjects[num_subjects++] = strdup(questions[i].subject);
+            if (num_subjects >= MAX_QUESTIONS) {
+                fprintf(stderr, "Error: Exceeded maximum subjects limit\n");
+                break;
+            }
+
+            subjects[num_subjects] = strdup(questions[i].subject);
+            if (subjects[num_subjects] == NULL) {
+                fprintf(stderr, "Error: Memory allocation failed for subject\n");
+                break;
+            }
+            num_subjects++;
         }
     }
 
-    // Đóng gói thành chuỗi
+    // Đóng gói danh sách thành chuỗi
     subjects_list[0] = '\0';
     for (int i = 0; i < num_subjects; i++) {
+        if (strlen(subjects_list) + strlen(subjects[i]) + 2 > size) { // Thêm dấu phẩy và null-terminator
+            fprintf(stderr, "Error: subjects_list buffer too small\n");
+            break;
+        }
         strcat(subjects_list, subjects[i]);
         if (i < num_subjects - 1) {
             strcat(subjects_list, ",");
@@ -340,6 +363,8 @@ void get_available_subjects(char* subjects_list, size_t size) {
         free(subjects[i]);
     }
 }
+
+
 
 // Kiểm tra thời gian còn lại
 int is_exam_time_remaining(ExamRoom* room) {

@@ -60,82 +60,70 @@ void print_success(const char* message) {
     printf("\033[1;32m%s\033[0m\n", message);
 }
 
-void handle_practice_menu(Client* client) {
+void handle_practice_menu(Client* client) { // Chế độ luyện tập 
+    char buffer[BUFFER_SIZE];  // Bộ đệm để lưu dữ liệu nhận từ server
+    fd_set readfds;            // Bộ file descriptor để kiểm tra đầu vào
+    int max_fd = client->socket;  // File descriptor lớn nhất (socket)
+
     while (1) {
         print_practice_room_menu();
-        char input[10];
-        int choice;
+        // Thiết lập bộ readfds
+        FD_ZERO(&readfds);
+        FD_SET(STDIN_FILENO, &readfds);  // Kiểm tra đầu vào từ người dùng
+        FD_SET(client->socket, &readfds);  // Kiểm tra dữ liệu từ server
 
-        // Đọc lựa chọn từ người dùng
-        printf("Nhập lựa chọn (1-2): ");
-        if (!fgets(input, sizeof(input), stdin)) {
-            print_error("Lỗi khi đọc input");
-            continue;
+        int activity = select(max_fd + 1, &readfds, NULL, NULL, NULL);  // Đợi sự kiện từ stdin hoặc socket
+        if (activity < 0) {
+            print_error("Select error");
+            break;
         }
 
-        // Xóa newline
-        input[strcspn(input, "\n")] = 0;
-
-        // Kiểm tra input hợp lệ
-        if (strlen(input) != 1 || input[0] < '1' || input[0] > '2') {
-            print_error("Lựa chọn không hợp lệ. Vui lòng chọn 1 hoặc 2");
-            continue;
-        }
-
-        choice = input[0] - '0';
-
-        switch (choice) {
-            case 1: {  // Bắt đầu luyện tập
-                char buffer[BUFFER_SIZE];
-                char subjects[256];
-                int num_questions_total = 0, time_limit = 0;
-                int num_easy = 0, num_medium = 0, num_hard = 0;
-
-                // Cấu hình bài tập
-                configure_practice(client, &num_questions_total, &time_limit,
-                                &num_easy, &num_medium, &num_hard, subjects);
-                
-                // Kiểm tra nếu người dùng hủy cấu hình (nhập 0)
-                if (strlen(subjects) == 0) {
-                    printf("\nĐã hủy cấu hình bài tập.\n");
-                    continue;
-                }
-
-                // Gửi cấu hình đến server
-                char config_cmd[BUFFER_SIZE];
-                snprintf(config_cmd, sizeof(config_cmd), 
-                        "START_PRACTICE %d,%d,%d,%d,%d,%s",
-                        num_questions_total, time_limit, 
-                        num_easy, num_medium, num_hard, subjects);
-
-                if (send_message(client, config_cmd) < 0) {
-                    print_error("Không thể gửi cấu hình đến server");
-                    continue;
-                }
-
-                // Nhận phản hồi từ server
-                if (receive_message(client, buffer) <= 0) {
-                    print_error("Mất kết nối với server");
-                    return;
-                }
-
-                if (strcmp(buffer, "PRACTICE_ACCEPT\n") == 0) {
-                    printf("\nBắt đầu bài tập...\n");
-                    handle_practice(client);
-                } else {
-                    print_error("Server từ chối bài tập");
-                }
-                break;
+        // Kiểm tra nếu có dữ liệu từ server
+        if (FD_ISSET(client->socket, &readfds)) {
+            int valread = receive_message(client, buffer);
+            if (valread <= 0) {
+                print_error("Server disconnected");
+                return;
             }
+            printf("\n%s\n", buffer);  // Hiển thị thông báo từ server
 
-            case 2: {  // Thoát chế độ luyện tập
-                if (send_message(client, "LEAVE_PRACTICE") >= 0) {
-                    print_success("Đã thoát chế độ luyện tập");
-                    return;
-                } else {
-                    print_error("Không thể thoát chế độ luyện tập");
+            // Kiểm tra nếu server thông báo về sự thay đổi trạng thái
+            if (strstr(buffer, "You can now start practicing") != NULL) {
+                printf("You can start practicing now.\n");
+            }
+        }
+
+        // Kiểm tra đầu vào từ người dùng
+        if (FD_ISSET(STDIN_FILENO, &readfds)) {
+            int choice;
+            if (scanf("%d", &choice) != 1) {  // Kiểm tra đầu vào hợp lệ
+                while (getchar() != '\n');  // Loại bỏ ký tự dư thừa
+                print_error("Invalid input");
+                continue;
+            }
+            while (getchar() != '\n');  // Loại bỏ ký tự dư thừa
+
+            switch (choice) {
+                case 1:
+                 {  // Bắt đầu luyện tập
+                            //handle_practice(client);
+                            start_and_set_format(client);
+                            handle_practice(client);
+                            break;  
+
                 }
-                break;
+                case 2:  // Rời chế độ luyện tập
+                    if (send_message(client, "LEAVE_PRACTICE") >= 0) {
+                        print_success("Left practice mode");
+                        return;  // Quay lại menu chính hoặc thoát
+                    } else {
+                        print_error("Failed to leave practice mode");
+                    }
+                    break;
+
+                default:
+                    print_error("Invalid option");
+                    break;
             }
         }
     }

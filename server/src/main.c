@@ -35,6 +35,7 @@ int main() {
 
     // Load questions và khởi động server
     load_questions();
+    get_available_subjects(server->subject_list,BUFFER_SIZE-10);
     printf("Server starting on port %d...\n", PORT);
 
     server->running = 1;

@@ -8,56 +8,49 @@
 #include <time.h>
 #include <unistd.h>
 
-// Khai báo mảng câu hỏi và biến số lượng câu hỏi
-extern Question questions[MAX_QUESTIONS];
-extern int num_questions;
 
 ClientDataPractice* create_client_data_practice(int socket, int num_questions, int time_limit, int num_easy, int num_medium, int num_hard, const char* subjects) {
-    // Kiểm tra các tham số đầu vào
-    if (num_questions <= 0 || num_questions > MAX_PRACTICE_QUESTIONS) {
-        fprintf(stderr, "Số lượng câu hỏi không hợp lệ: %d\n", num_questions);
+    // Kiểm tra số lượng câu hỏi không vượt quá giới hạn
+    if (num_questions > MAX_QUESTIONS) {
+        fprintf(stderr, "Số lượng câu hỏi vượt quá giới hạn.\n");
         return NULL;
     }
 
-    // Cấp phát bộ nhớ cho cấu trúc
+    // Cấp phát bộ nhớ cho ClientDataPractice
     ClientDataPractice* client = (ClientDataPractice*)malloc(sizeof(ClientDataPractice));
     if (client == NULL) {
-        perror("Không thể cấp phát bộ nhớ cho ClientDataPractice");
+        perror("Không thể cấp phát bộ nhớ");
         return NULL;
     }
 
-    // Khởi tạo các giá trị
-    memset(client, 0, sizeof(ClientDataPractice));
-
+    // Khởi tạo các giá trị trong cấu trúc
     client->socket = socket;
-    client->current_question = 0;
+    client->current_question = 0; // Câu hỏi bắt đầu từ 1
     client->num_questions = num_questions;
-    client->time_limit = time_limit * 60;
+    client->time_limit = time_limit*60; // Đổi phút thành giây
     client->num_easy = num_easy;
     client->num_medium = num_medium;
     client->num_hard = num_hard;
-    client->start_time = time(NULL);
-    client->score = 0;
-    
-    // Xử lý chuỗi môn học
-    if (subjects != NULL) {
-        strncpy(client->subjects_practice, subjects, sizeof(client->subjects_practice) - 1);
-        client->subjects_practice[sizeof(client->subjects_practice) - 1] = '\0';
-    } else {
-        client->subjects_practice[0] = '\0';
-    }
+    client->start_time = time(NULL); // Gán thời gian bắt đầu là thời điểm hiện tại
+    client->score = 0; // Điểm ban đầu là 0
+    memset(client->subjects_practice, 0, sizeof(client->subjects_practice));
 
-    // Khởi tạo mảng câu trả lời
+    // Reset answers_practice
     memset(client->answers_practice, 0, sizeof(client->answers_practice));
 
-    // Khởi tạo mảng con trỏ câu hỏi
-    for (int i = 0; i < MAX_PRACTICE_QUESTIONS; i++) {
+    // Reset questions_practice
+    memset(client->questions_practice, 0, sizeof(client->questions_practice));
+    //printf("Client %d: %d %d %d %d %d %s\n", client->socket, client->num_questions, client->time_limit, client->num_easy, client->num_medium, client->num_hard, client->subjects_practice);
+    // Sao chép chuỗi môn học
+    strncpy(client->subjects_practice, subjects, sizeof(client->subjects_practice) - 1);
+    client->subjects_practice[sizeof(client->subjects_practice) - 1] = '\0'; // Đảm bảo chuỗi kết thúc bằng '\0'
+    //printf("Client %d: %d %d %d %d %d %s\n", client->socket, client->num_questions, client->time_limit, client->num_easy, client->num_medium, client->num_hard, client->subjects_practice);
+    // Khởi tạo câu trả lời và mảng câu hỏi thực hành
+    memset(client->answers_practice, 0, sizeof(client->answers_practice));
+    for (int i = 0; i < MAX_QUESTIONS; i++) {
         client->questions_practice[i] = NULL;
     }
-
-    return client;
 }
-
 int set_questions_practice(ClientDataPractice* client) {
     Question easy_questions[MAX_QUESTIONS], medium_questions[MAX_QUESTIONS], hard_questions[MAX_QUESTIONS];
     int easy_count, medium_count, hard_count;
@@ -67,84 +60,55 @@ int set_questions_practice(ClientDataPractice* client) {
     filter_questions(medium_questions, &medium_count, 2, client->subjects_practice);
     filter_questions(hard_questions, &hard_count, 3, client->subjects_practice);
 
-    // Điều chỉnh số lượng câu hỏi theo số lượng có sẵn
-    if (client->num_easy > easy_count) {
-        printf("Do không đủ số lượng câu hỏi , điều chỉnh số câu hỏi dễ từ %d xuống %d ...\n", client->num_easy, easy_count);
-        client->num_easy = easy_count;
-    }
-    if (client->num_medium > medium_count) {
-        printf("Do không đủ số lượng câu hỏi , điều chỉnh số câu hỏi dễ từ %d xuống %d ...\n", client->num_medium, medium_count);
-        client->num_medium = medium_count;
-    }
-    if (client->num_hard > hard_count) {
-        printf("Do không đủ số lượng câu hỏi , điều chỉnh số câu hỏi dễ từ %d xuống %d ...\n", client->num_hard, hard_count);
-        client->num_hard = hard_count;
-    }
-
-    // Cập nhật tổng số câu hỏi
-    int total_available = client->num_easy + client->num_medium + client->num_hard;
-    if (total_available == 0) {
-        const char *error_msg = "ERROR_FORMAT:Không tìm thấy câu hỏi phù hợp với các tiêu chí đã chọn.\n";
+    if (easy_count < client->num_easy || medium_count < client->num_medium || hard_count < client->num_hard) {
+        const char *error_msg = "ERROR_FORMAT: Not enough questions available for the selected criteria.\n";
         send(client->socket, error_msg, strlen(error_msg), 0);
         return -1;
     }
 
-    client->num_questions = total_available;
-    
-    // Chọn câu hỏi ngẫu nhiên
     srand(time(NULL));
     int index = 0;
 
-    // Thêm câu hỏi dễ
+    // Chọn câu hỏi ngẫu nhiên theo độ khó
     for (int i = 0; i < client->num_easy; i++) {
-        client->questions_practice[index] = malloc(sizeof(Question));
-        if (client->questions_practice[index]) {
-            *(client->questions_practice[index]) = easy_questions[rand() % easy_count];
+        if (index < MAX_QUESTIONS) { // Đảm bảo không vượt quá kích thước mảng
+            client->questions_practice[index] = &easy_questions[rand() % easy_count];
             index++;
         }
     }
-
-    // Thêm câu hỏi trung bình
     for (int i = 0; i < client->num_medium; i++) {
-        client->questions_practice[index] = malloc(sizeof(Question));
-        if (client->questions_practice[index]) {
-            *(client->questions_practice[index]) = medium_questions[rand() % medium_count];
+        if (index < MAX_QUESTIONS) { // Đảm bảo không vượt quá kích thước mảng
+            client->questions_practice[index] = &medium_questions[rand() % medium_count];
             index++;
         }
     }
-
-    // Thêm câu hỏi khó
     for (int i = 0; i < client->num_hard; i++) {
-        client->questions_practice[index] = malloc(sizeof(Question));
-        if (client->questions_practice[index]) {
-            *(client->questions_practice[index]) = hard_questions[rand() % hard_count];
+        if (index < MAX_QUESTIONS) { // Đảm bảo không vượt quá kích thước mảng
+            client->questions_practice[index] = &hard_questions[rand() % hard_count];
             index++;
         }
     }
-
-    // Thông báo số lượng câu hỏi thực tế
-    char info_msg[256];
-    snprintf(info_msg, sizeof(info_msg), 
-        "Bài tập gồm %d câu: %d dễ, %d trung bình, %d khó\n",
-        client->num_questions, client->num_easy, client->num_medium, client->num_hard);
-    send(client->socket, info_msg, strlen(info_msg), 0);
 
     return 0;
 }
+
 // Lọc các câu hỏi dựa trên độ khó và môn học
 void filter_questions(Question* filtered_questions, int* filtered_count, int difficulty, const char* subjects) {
     *filtered_count = 0;
     
-    for (int i = 0; i < num_questions; i++) {  
-        if (questions[i].difficulty != difficulty) continue;  
-
+    // Vòng lặp qua tất cả câu hỏi
+    for (int i = 0; i < num_questions; i++) {
+        // Lọc theo độ khó
+        if (questions[i].difficulty != difficulty) continue;
+        // Lọc theo môn học
         if (strstr(subjects, "All") || strstr(subjects, questions[i].subject)) {
-            filtered_questions[*filtered_count] = questions[i];
-            (*filtered_count)++;
+                filtered_questions[*filtered_count] = questions[i];
+                (*filtered_count)++;
         }
     }
+    // In thông báo số câu hỏi lọc được cho client
+    //printf("Client %d: Filtered %d questions\n", client_socket, *filtered_count);
 }
-
 // Xử lý câu trả lời của client trong chế độ thực hành
 void handel_answer_practice(ClientDataPractice* client, const char* answer) {
     if (client == NULL) {
@@ -162,11 +126,12 @@ void handel_answer_practice(ClientDataPractice* client, const char* answer) {
     }
     if (strcmp(answer, "SUBMIT") == 0) {
         client->score = calculate_score_practice(client);
+        printf("Client %d has submitted the practice early.\n", client->socket);
         send_result_to_client(client);
+        //free_client_data_practice(client);
         return;
     }
     int current_question = client->current_question;
-
     if (current_question < client->num_questions) {
         client->answers_practice[current_question] = answer[0]; // Lưu câu trả lời
         if (client->questions_practice[current_question]->correct_answer == answer[0]) {
@@ -177,8 +142,22 @@ void handel_answer_practice(ClientDataPractice* client, const char* answer) {
     if (client->current_question == client->num_questions) {
         client->score = calculate_score_practice(client); // Tính điểm
         send_result_to_client(client); // Gửi kết quả bài thi
+        //free_client_data_practice(client); // Giải phóng bộ nhớ
     }
     else send_practice_question(client, client->current_question); // Gửi câu hỏi tiếp theo
+}
+void change_answer_practice(ClientDataPractice* client, int question_number, char new_answer) {
+    //printf("%d\n",client->current_question);
+    if (question_number >= 1 && question_number <= client->num_questions && question_number <= client->current_question 
+        && client->answers_practice[question_number - 1] != new_answer) {
+            client->answers_practice[question_number - 1] = new_answer;
+            send(client->socket, "CHANGE_SUCCESS: Answer changed successfully\n", 256, 0);
+           
+    }
+    else {
+        send(client->socket, "ERROR_CHANGE_ANS: Fail to change question number answer\n", 256, 0);
+    }
+    //send_practice_question(client, client->current_question); // Gửi câu hỏi tiếp theo
 }
 
 // Gửi kết quả bài thi thực hành cho client
@@ -220,7 +199,26 @@ int is_time_remaining(ClientDataPractice* client) {
     if (elapsed_time < client->time_limit) {
         return 1; // Còn thời gian
     } else {
+       // free_client_data_practice(client);
         return 0; // Hết thời gian
     }
 }
+void free_client_data_practice(ClientDataPractice* client) {
+    if (client == NULL) {
+        return; // Đảm bảo con trỏ không NULL
+    }
+
+    // Giải phóng từng câu hỏi trong mảng questions_practice
+    for (int i = 0; i < client->num_questions; i++) {
+        if (client->questions_practice[i] != NULL) {
+            free(client->questions_practice[i]); // Giải phóng câu hỏi
+            client->questions_practice[i] = NULL; // Đặt con trỏ NULL để tránh giải phóng lại
+        }
+    }
+
+    // Cuối cùng, giải phóng cấu trúc chính
+    free(client);
+}
+
+
 

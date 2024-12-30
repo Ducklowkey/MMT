@@ -28,9 +28,9 @@ typedef struct {
     int num_hard;                // Số lượng câu khó
     time_t start_time;             // Thời gian bắt đầu
     int score;                     // Điểm của client
-    char subjects_practice[256];            // Môn học
-    char answers_practice[256];             // Câu trả lời
-    Question* questions_practice[100];           // Mảng câu hỏi
+    char subjects_practice[BUFFER_SIZE];            // Môn học
+    char answers_practice[MAX_QUESTIONS];             // Câu trả lời
+    Question* questions_practice[MAX_QUESTIONS];           // Mảng câu hỏi
 } ClientDataPractice;
 
 typedef struct { //Giúp server quản lý thông tin client 
@@ -81,6 +81,7 @@ typedef struct {
     struct pollfd *pfds;
     int fd_count;
     ClientInfo *clients;
+    char subject_list[BUFFER_SIZE];
     volatile sig_atomic_t running;
 } Server;
 

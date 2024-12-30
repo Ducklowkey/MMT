@@ -213,7 +213,7 @@ void handle_disconnection(Server* server, int client_index) {
     ClientInfo* client = &server->clients[client_index];
 
     if (client->client_practice) {
-        cleanup_practice_session(client->client_practice);
+       // cleanup_practice_session(client->client_practice);
         client->client_practice = NULL;
     }
 
@@ -421,47 +421,33 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
     }
 
 
-    if (strncmp(buffer, "START_PRACTICE ", 15) == 0) {
+    if (strncmp(buffer, "START_PRACTICE ",15) == 0) {
         printf("Processing START_PRACTICE for client %d...\n", client->fd);
-        int num_questions, time_limit, num_easy, num_medium, num_hard;
-        char subjects[256];
+            int num_questions, time_limit, num_easy, num_medium, num_hard;
+             char subjects[256];
+        // printf("%s\n", buffer);
+            // Phân tích cấu hình
+            if (sscanf(buffer, "START_PRACTICE %d,%d,%d,%d,%d,%255[^\n]",
+                    &num_questions, &time_limit, &num_easy, &num_medium, &num_hard, subjects) == 6) {
+                client->client_practice = create_client_data_practice(client->fd, num_questions, time_limit, num_easy, num_medium, num_hard, subjects);
+                //printf("Client practice: %p\n", client_practice);
+                
+                if (set_questions_practice(client->client_practice) == -1) {
+                    printf("Failed to send practice question.\n");
+                    return;
+                }
+                //else send(client->fd, "PRACTICE_ACCEPT\n", 30, 0);
+                
+                //printf("%p\n", client->client_practice);
+                if (client->client_practice != NULL) { 
 
-        // Phân tích cấu hình
-        if (sscanf(buffer, "START_PRACTICE %d,%d,%d,%d,%d,%255[^\n]", &num_questions, &time_limit, &num_easy, &num_medium, &num_hard, subjects) == 6) {
-            // Kiểm tra các giá trị
-            if (num_questions <= 0 || num_questions > MAX_PRACTICE_QUESTIONS) {
-                const char* error_msg = "Invalid number of questions\n";
-                send(client->fd, error_msg, strlen(error_msg), 0);
-                return;
+                    client->client_practice->start_time = time(NULL);
+                    //printf("Readable time: "); 
+                    send_practice_question(client->client_practice, 0); // câu hỏi đầu tiên
+                }
+            } else {
+                printf("Failed to parse practice config.\n");
             }
-
-            // Gửi xác nhận
-            send(client->fd, "PRACTICE_ACCEPT\n", 16, 0);
-
-            // Tạo client_practice mới
-            client->client_practice = create_client_data_practice(
-            client->fd, num_questions, time_limit, 
-            num_easy, num_medium, num_hard, subjects);
-
-            if (!client->client_practice) {
-                const char* error_msg = "Failed to initialize practice session\n";
-                send(client->fd, error_msg, strlen(error_msg), 0);
-                return;
-            }
-
-            if (set_questions_practice(client->client_practice) == -1) {
-                const char* error_msg = "Failed to set practice questions\n";
-                send(client->fd, error_msg, strlen(error_msg), 0);
-                free(client->client_practice);
-                client->client_practice = NULL;
-                return;
-            }
-
-            send_practice_question(client->client_practice, 0);
-        }else {
-            printf("Failed to parse practice config.\n");
-        }
-        return;
     }
     
 
@@ -472,6 +458,7 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
             if (sscanf(buffer, "SUBMIT_PRACTICE_ANSWER  %s\n", answer) == 1) {
                 printf("Answer: %s\n", answer); // In câu trả lời
                 handel_answer_practice(client->client_practice, answer);
+    
             } else {
                 printf("Fail to sscanf answer!\n");
             }
@@ -485,7 +472,28 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
             send(client->fd, timeout_message, strlen(timeout_message), 0);
         }
     }
-
+    else
+    if (strncmp(buffer,"CHANGE_ANSWER_PRACTICE", 20) == 0) {
+            int question_number;
+            char new_answer;
+            if (is_time_remaining(client->client_practice)){
+                if (sscanf(buffer, "CHANGE_ANSWER_PRACTICE %d %c\n", &question_number, &new_answer) == 2) {
+                    printf("Client %d Change answer: %d %c\n", client->fd,question_number, new_answer);
+                    change_answer_practice(client->client_practice, question_number, new_answer);
+                    //send_practice_question(client->client_practice, client->client_practice->current_question);
+                } else {
+                    printf("Failed to parse change answer.\n");
+                }
+            }
+            else {
+                printf("Time out!\n");
+                char timeout_message[1024];
+                int score = calculate_score_practice(client->client_practice);
+                snprintf(timeout_message, sizeof(timeout_message), "TIMEOUT: Time out! - SCORE: %d/%d\n",
+                score, client->client_practice->num_questions);
+                send(client->fd, timeout_message, strlen(timeout_message), 0);
+            }
+    }else
     if (strcmp(buffer, "LEAVE_PRACTICE") == 0) {
          printf("Client has left practice mode.\n");
     } 
@@ -493,14 +501,15 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
     if (strcmp(buffer, "GET_SUBJECTS") == 0) {
         char subjects_list[BUFFER_SIZE];
         char response[BUFFER_SIZE];
-    
+        memset(subjects_list, 0, BUFFER_SIZE);
+        memset(response, 0, BUFFER_SIZE);
         // Lấy danh sách môn học, để lại không gian cho "SUBJECTS|" và "\n"
-        get_available_subjects(subjects_list, BUFFER_SIZE - 10);  // -10 để dành chỗ cho "SUBJECTS|" và "\n"
-    
+        //get_available_subjects(subjects_list, BUFFER_SIZE - 10);  // -10 để dành chỗ cho "SUBJECTS|" và "\n"
+        printf("Sending subject list to user %s\n", server->subject_list);
         // Tạo response với kiểm tra độ dài
         int prefix_len = snprintf(response, BUFFER_SIZE, "SUBJECTS|");
         if (prefix_len < BUFFER_SIZE) {
-            strncat(response, subjects_list, BUFFER_SIZE - prefix_len - 2);  // -2 cho \n và null terminator
+            strncat(response, server->subject_list, BUFFER_SIZE - prefix_len - 2);  // -2 cho \n và null terminator
             strcat(response, "\n");
             send(client->fd, response, strlen(response), 0);
         } else {
@@ -508,7 +517,7 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
             const char* error_msg = "Error: Subject list too long\n";
             send(client->fd, error_msg, strlen(error_msg), 0);
         }
-    }
+    }else
 
     // Xử lý lệnh TIME
     if (strcmp(buffer, "TIME") == 0) {
@@ -589,16 +598,16 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
     }
 }
 
-void cleanup_practice_session(ClientDataPractice* practice) {
-    if (!practice) return;
+// void cleanup_practice_session(ClientDataPractice* practice) {
+//     if (!practice) return;
 
-    // Giải phóng bộ nhớ của các câu hỏi
-    for (int i = 0; i < MAX_PRACTICE_QUESTIONS; i++) {
-        if (practice->questions_practice[i]) {
-            free(practice->questions_practice[i]);
-        }
-    }
+//     // Giải phóng bộ nhớ của các câu hỏi
+//     for (int i = 0; i < MAX_PRACTICE_QUESTIONS; i++) {
+//         if (practice->questions_practice[i]) {
+//             free(practice->questions_practice[i]);
+//         }
+//     }
 
-    // Giải phóng cấu trúc
-    free(practice);
-}
+//     // Giải phóng cấu trúc
+//     free(practice);
+//}
