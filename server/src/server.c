@@ -510,14 +510,23 @@ void handle_client_message(Server* server, int client_index, char* buffer) {
         }
     }
 
-    // Xử lý lệnh SUBMIT
+    // Xử lý lệnh TIME
     if (strcmp(buffer, "TIME") == 0) {
         send_time_remaining(client);
         return;
     }
-
+    // Xử lý lệnh SUBMIT 
     if (strcmp(buffer, "SUBMIT") == 0) {
-        handle_exam_submit(client);
+        printf("Processing SUBMIT command from user %s\n", client->username);  
+        if (client->current_room_id != -1) {
+            ExamRoom* room = get_room(client->current_room_id);
+            if (!room) {
+                printf("Room not found for SUBMIT command\n");
+                return;
+            }
+            client->in_review_mode = 0;  // Reset mode trước
+            handle_exam_submit(client);
+        }
         return;
     }
 

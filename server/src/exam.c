@@ -377,7 +377,9 @@ void handle_exam_submit(ClientInfo* client) {
              score, total_questions);
     send(client->fd, result_message, strlen(result_message), 0);
     
-    // Reset các trạng thái
+    save_exam_result(client->username, room->room_id, score, total_questions);
+
+    // Reset trạng thái
     client->in_review_mode = 0;
     client->current_question = -1;
 }
@@ -388,22 +390,12 @@ void show_review_menu(ClientInfo* client) {
     if (!room) return;
 
     snprintf(buffer, BUFFER_SIZE, 
-            "\nDanh sách câu hỏi:\n"
-            "Sử dụng lệnh:\n"
-            "REVIEW <số câu hỏi>: để xem lại câu hỏi\n"
-            "CHANGE <số câu hỏi> <đáp án mới>: để thay đổi đáp án\n"
-            "SUBMIT: để nộp bài\n\n");
+            "\n===== CHẾ ĐỘ XEM LẠI =====\n"
+            "REVIEW <số câu>: xem lại câu hỏi\n"
+            "CHANGE <số câu> <đáp án>: sửa đáp án\n"
+            "TIME: xem thời gian còn lại\n"
+            "SUBMIT: nộp bài\n\n");
     send(client->fd, buffer, strlen(buffer), 0);
-
-    // Hiển thị danh sách câu trả lời
-    for (int i = 0; i < room->num_questions; i++) {
-        Question* q = &questions[room->question_ids[i]];
-        snprintf(buffer, BUFFER_SIZE, 
-                "Câu %d: %s\nĐáp án đã chọn: %c\n\n",
-                i + 1, q->question, 
-                client->question_answered[i] ? client->answers[i] : '-');
-        send(client->fd, buffer, strlen(buffer), 0);
-    }
 }
 
 void handle_review_request(ClientInfo* client, int question_num) {
